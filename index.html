@@ -318,7 +318,7 @@ tr:hover td{background:#fafaf9}
       <div class="pay-panel-hd">새 결제 등록</div>
       <div class="pay-two">
         <div class="pay-sec"><div class="pay-lbl">수강생 이름</div><input type="text" id="f-name" class="pay-input" placeholder="이름 입력"></div>
-        <div class="pay-sec"><div class="pay-lbl">날짜</div><div style="position:relative"><input type="date" id="f-date" class="pay-input" onchange="onDateChange()" style="padding-right:52px"><span id="f-date-dow" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;pointer-events:none"></span></div></div>
+        <div class="pay-sec"><div class="pay-lbl">날짜</div><div style="position:relative"><input type="date" id="f-date" class="pay-input" onchange="onDateChange()" oninput="onDateChange()" style="padding-right:52px"><span id="f-date-dow" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;pointer-events:none"></span></div></div>
       </div>
       <div class="pay-sec">
         <div style="display:flex;align-items:center;justify-content:space-between">
@@ -940,17 +940,21 @@ function selectBasicMonthly(btn){
 
 const TICKET_PRICE={'1 Ticket':30000,'4 Tickets':110000,'8 Tickets':200000,'1 Basic':40000,'etc.':0,'월등록/PRO':0};
 function selTicket(el){
-  const ticket=el.dataset.ticket,onClass='on-'+el.dataset.on;
+  const ticket=el.dataset.ticket;
+  const onClass='on-'+el.dataset.on;
   const wasSelected=(fTicket===ticket);
   fTicket=wasSelected?'':ticket;
-  document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
+  document.querySelectorAll('#ticket-chips .chip').forEach(function(c){c.className='chip';});
   if(fTicket){
     el.className='chip '+onClass;
     const price=TICKET_PRICE[fTicket];
-    if(price!==undefined&&price>0){fAmt=price;updateAmtDisplay();}
-    else if(price===0){/* etc/월등록PRO는 직접입력 */}
+    if(typeof price==='number'&&price>0){
+      fAmt=price;
+      updateAmtDisplay();
+    }
   } else {
-    fAmt=0;updateAmtDisplay();
+    fAmt=0;
+    updateAmtDisplay();
   }
 }
 function selPay(val,key){
