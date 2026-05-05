@@ -802,7 +802,7 @@ function saveTeachersData(){try{localStorage.setItem(TEACHER_KEY,JSON.stringify(
 function fmtN(n){return Math.round(n).toLocaleString('ko-KR');}
 function fmtW(n){return '\u20A9'+fmtN(n);}
 
-(function init(){
+function init(){
   loadPay();
   const today=new Date().toISOString().split('T')[0];
   fDate=today;
@@ -814,7 +814,12 @@ function fmtW(n){return '\u20A9'+fmtN(n);}
   updateDowLabel(today);
   updateDateDow(today);
   populateStatMonths();
-})();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 function onDateChange(){
   fDate=document.getElementById('f-date').value;
@@ -940,22 +945,26 @@ function selectBasicMonthly(btn){
 
 const TICKET_PRICE={'1 Ticket':30000,'4 Tickets':110000,'8 Tickets':200000,'1 Basic':40000,'etc.':0,'월등록/PRO':0};
 function selTicket(el){
-  const ticket=el.dataset.ticket;
-  const onClass='on-'+el.dataset.on;
-  const wasSelected=(fTicket===ticket);
-  fTicket=wasSelected?'':ticket;
-  document.querySelectorAll('#ticket-chips .chip').forEach(function(c){c.className='chip';});
-  if(fTicket){
-    el.className='chip '+onClass;
-    const price=TICKET_PRICE[fTicket];
-    if(typeof price==='number'&&price>0){
-      fAmt=price;
-      updateAmtDisplay();
-    }
-  } else {
+  var ticket=el.dataset.ticket;
+  var onClass='on-'+el.dataset.on;
+  // 이미 선택된 거 누르면 해제
+  if(fTicket===ticket){
+    fTicket='';
     fAmt=0;
+    document.querySelectorAll('#ticket-chips .chip').forEach(function(c){c.className='chip';});
     updateAmtDisplay();
+    return;
   }
+  // 새로 선택
+  fTicket=ticket;
+  document.querySelectorAll('#ticket-chips .chip').forEach(function(c){c.className='chip';});
+  el.className='chip '+onClass;
+  // 금액 자동 설정
+  var price=TICKET_PRICE[ticket];
+  if(price>0){
+    fAmt=price;
+  }
+  updateAmtDisplay();
 }
 function selPay(val,key){
   fPay=fPay===val?'':val;
