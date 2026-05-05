@@ -154,6 +154,11 @@ html,body{
   font-size:11px;color:#ccc;letter-spacing:0.3px;
 }
 .dot{width:6px;height:6px;border-radius:50%;background:#1d9e75}
+
+.cs-btn{width:100%;padding:12px 16px;background:#fff;border:1px solid #e0e0da;border-radius:12px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:all .15s}
+.cs-btn:hover{background:#f5f5f0;border-color:#bbb}
+.cs-time{font-size:12px;color:#aaa;font-weight:400}
+.cs-cat{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
 </style>
 </head>
 <body>
@@ -197,6 +202,17 @@ html,body{
   </div>
 </div>
 
+
+<div class="overlay" id="class-overlay" style="display:none">
+  <div class="overlay-bg"></div>
+  <div class="result-card" style="max-width:400px;width:90vw">
+    <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px" id="cs-name"></div>
+    <div style="font-size:13px;color:#888;margin-bottom:20px">오늘 수업을 선택해 주세요</div>
+    <div id="cs-classes" style="display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:16px"></div>
+    <button onclick="skipClassSelect()" style="width:100%;padding:10px;background:transparent;border:1px solid #ddd;border-radius:10px;font-family:inherit;font-size:13px;color:#aaa;cursor:pointer">수업 선택 안 함</button>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="overlay-bg"></div>
   <div class="result-card">
@@ -221,6 +237,21 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const payColRef = db.collection('payRecords');
+
+
+const TIMETABLE={
+  0:[{t:'SYA',cat:'K-POP',time:'4:30'},{t:'LEEKO',cat:'비기너',time:'4:50'},{t:'PITU',cat:'베이직',time:'5:30'},{t:'JUJU',cat:'정규',time:'5:50'},{t:'GOOSEUL',cat:'정규',time:'7:00'},{t:'HYOS',cat:'베이직',time:'7:20'},{t:'RENYO',cat:'팝업',time:'5:30'},{t:'DAIM',cat:'팝업',time:'5:30'},{t:'SUHWA',cat:'팝업',time:'5:30'},{t:'JIOH',cat:'팝업',time:'8:20'},{t:'JIA',cat:'팝업',time:'8:20'}],
+  1:[{t:'MANDUCK',cat:'정규',time:'6:10'},{t:'LINY',cat:'정규',time:'7:20'},{t:'WANNA',cat:'베이직',time:'7:30'},{t:'HYOS',cat:'팝업',time:'8:40'},{t:'MINA MYOUNG',cat:'팝업',time:'8:40'},{t:'SIR',cat:'팝업',time:'8:40'}],
+  2:[{t:'CHAERIN',cat:'K-POP',time:'6:00'},{t:'HINARI',cat:'정규',time:'6:10'},{t:'BUCKEY',cat:'팝업',time:'7:20'},{t:'KUNA',cat:'팝업',time:'7:20'},{t:'PITU',cat:'팝업',time:'7:20'},{t:'TEDDY',cat:'정규',time:'7:30'},{t:'HYNN',cat:'팝업',time:'8:40'},{t:'NOHWON X SSONG',cat:'팝업',time:'8:40'},{t:'EVE',cat:'베이직',time:'8:50'}],
+  3:[{t:'SSOJU',cat:'정규',time:'6:10'},{t:'NATTY',cat:'팝업',time:'7:20'},{t:'KAAN',cat:'팝업',time:'7:20'},{t:'HYOS',cat:'팝업',time:'7:20'},{t:'BUCKEY',cat:'팝업',time:'7:20'},{t:'EVE',cat:'정규',time:'7:30'},{t:'YENI CHO',cat:'베이직',time:'8:40'},{t:'LETDO X PITU X SSONG',cat:'팝업',time:'8:40'}],
+  4:[{t:'SOPHIEHEN',cat:'정규',time:'6:10'},{t:'LEEKO',cat:'정규',time:'7:20'},{t:'MINNY PARK',cat:'정규',time:'7:30'},{t:'MAAIN',cat:'팝업',time:'7:30'},{t:'HALO',cat:'팝업',time:'7:30'},{t:'CHOCOL',cat:'정규',time:'8:40'}],
+  5:[{t:'ASME',cat:'비기너',time:'6:10'},{t:'REALEE',cat:'정규',time:'7:20'},{t:'HION',cat:'팝업',time:'7:30'},{t:'JUNGWOO',cat:'정규',time:'7:30'},{t:'JJ',cat:'정규',time:'8:40'},{t:'FUNKY Y',cat:'팝업',time:'8:40'},{t:'YENI CHO',cat:'정규',time:'8:50'}],
+  6:[{t:'SYA',cat:'K-POP',time:'4:10'},{t:'REALEE',cat:'비기너',time:'4:50'},{t:'MINA MYOUNG',cat:'비기너',time:'5:30'},{t:'AZHA X ARMSEOK',cat:'팝업',time:'5:30'},{t:'HYOS X COI',cat:'팝업',time:'5:30'},{t:'LETDO',cat:'정규',time:'5:50'},{t:'HANNAH',cat:'팝업',time:'7:00'},{t:'BELIEVE',cat:'정규',time:'7:00'},{t:'GUMA',cat:'팝업',time:'7:20'},{t:'HAIAN',cat:'팝업',time:'7:20'},{t:'AUSTIN',cat:'팝업',time:'7:20'},{t:'SSONG',cat:'팝업',time:'8:20'},{t:'ROSY',cat:'팝업',time:'8:20'},{t:'PIKI',cat:'팝업',time:'8:20'},{t:'TEDDY X KAAN',cat:'팝업',time:'8:20'}]
+};
+const CAT_COLOR_K={'정규':'#1a1a1a','팝업':'#2e7d32','비기너':'#c8b741','베이직':'#f5a623','K-POP':'#4a90d9'};
+const CAT_LABEL_K={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'};
+let pendingMember=null;
 
 let input='', timerInt=null;
 
@@ -278,11 +309,66 @@ async function submit(){
       ?`<div class="r-remain ok"><span class="num">${r}</span>회 남았습니다</div>`
       :`<div class="r-remain last">오늘이 마지막 수업입니다</div>`)
       +`<div style="margin-top:14px;background:#f8f8f5;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;color:#555">📅 수강권 만료일 <span style="color:#204828;font-weight:700">${expStr}</span></div>`;
-    show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
+    pendingMember={m,r,expStr,extra};
+    showClassSelect(m);
   }catch(e){
     show('err','오류 발생','잠시 후 다시 시도해 주세요','');
     console.error(e);
   }
+}
+
+
+function showClassSelect(m){
+  const dow=new Date().getDay();
+  const classes=TIMETABLE[dow]||[];
+  document.getElementById('cs-name').textContent=m.name+'님, 어느 수업에 참여하시나요?';
+  const wrap=document.getElementById('cs-classes');
+  wrap.innerHTML='';
+  classes.forEach(function(c){
+    const btn=document.createElement('button');
+    btn.className='cs-btn';
+    const col=CAT_COLOR_K[c.cat]||'#888';
+    const lbl=CAT_LABEL_K[c.cat]||c.cat;
+    btn.innerHTML='<span style="font-weight:600">'+c.t+'</span>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<span class="cs-time">'+c.time+'</span>'
+      +'<span class="cs-cat" style="background:'+col+'20;color:'+col+'">'+lbl+'</span>'
+      +'</div>';
+    btn.addEventListener('click',function(){confirmClassSelect(c.t,c.cat,c.time);});
+    wrap.appendChild(btn);
+  });
+  if(!classes.length){
+    wrap.innerHTML='<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">오늘 등록된 수업이 없습니다</div>';
+  }
+  document.getElementById('class-overlay').style.display='flex';
+}
+
+function confirmClassSelect(teacher,cat,time){
+  document.getElementById('class-overlay').style.display='none';
+  if(!pendingMember) return;
+  const {m,r,expStr,extra}=pendingMember;
+  // payRecords에 결제 기록 저장 (4 Tickets 차감 기록)
+  const now2=new Date();
+  const today=now2.toISOString().split('T')[0];
+  const timeStr=String(now2.getHours()).padStart(2,'0')+':'+String(now2.getMinutes()).padStart(2,'0');
+  const rec={
+    date:today, time:timeStr,
+    name:m.name, teacher:teacher, cat:cat,
+    ticket:'다회권 차감', amt:0, pay:'다회권',
+    note:'키오스크 체크인',
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  payColRef.add(rec).catch(function(e){console.error('결제기록 저장 오류:',e);});
+  pendingMember=null;
+  show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
+}
+
+function skipClassSelect(){
+  document.getElementById('class-overlay').style.display='none';
+  if(!pendingMember) return;
+  const {m,r,expStr,extra}=pendingMember;
+  pendingMember=null;
+  show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
 }
 
 function show(type,name,msg,extra){
