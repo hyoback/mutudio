@@ -318,7 +318,7 @@ tr:hover td{background:#fafaf9}
       <div class="pay-panel-hd">새 결제 등록</div>
       <div class="pay-two">
         <div class="pay-sec"><div class="pay-lbl">수강생 이름</div><input type="text" id="f-name" class="pay-input" placeholder="이름 입력"></div>
-        <div class="pay-sec"><div class="pay-lbl">날짜</div><input type="date" id="f-date" class="pay-input" onchange="onDateChange()"></div>
+        <div class="pay-sec"><div class="pay-lbl">날짜</div><div style="display:flex;align-items:center;gap:8px"><input type="date" id="f-date" class="pay-input" onchange="onDateChange()" style="flex:1"><span id="f-date-dow" style="font-size:13px;font-weight:600;color:#1a1a1a;background:#f5f5f4;border:1px solid #e0e0da;border-radius:8px;padding:7px 12px;white-space:nowrap;min-width:36px;text-align:center"></span></div></div>
       </div>
       <div class="pay-sec">
         <div style="display:flex;align-items:center;justify-content:space-between">
@@ -833,6 +833,7 @@ function fmtW(n){return '\u20A9'+fmtN(n);}
   renderTeacherList();
   updatePayStats();
   updateDowLabel(today);
+  updateDateDow(today);
   populateStatMonths();
 })();
 
@@ -840,9 +841,22 @@ function onDateChange(){
   fDate=document.getElementById('f-date').value;
   fTeacher='';fCat='';
   showAllTeachers=false;
+  tempClasses=[];
+  renderTempChips();
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
   renderClassChips();
   updateDowLabel(fDate);
+  updateDateDow(fDate);
+}
+function updateDateDow(dateStr){
+  const el=document.getElementById('f-date-dow');
+  if(!el||!dateStr) return;
+  const dows=['일','월','화','수','목','금','토'];
+  const dow=new Date(dateStr+'T00:00:00').getDay();
+  const colors=['#e24b4a','#378ADD','#555','#555','#555','#555','#e24b4a']; // 일=빨,토=빨
+  el.textContent=dows[dow];
+  el.style.color=colors[dow];
+  el.style.borderColor=dow===0||dow===6?colors[dow]:'#e0e0da';
 }
 
 function updateDowLabel(dateStr){
@@ -1286,37 +1300,33 @@ function removeTempClass(i){
   tempClasses.splice(i,1);
   renderTempChips();
 }
-// 날짜 바뀌면 임시수업 초기화
-const _origOnDateChange=onDateChange;
-function onDateChange(){
-  tempClasses=[];
-  renderTempChips();
-  _origOnDateChange();
-}
+// onDateChange에 임시수업 초기화 통합됨
 document.getElementById('add-class-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});
 
 // ── 차트 ──
 let dailyChart=null, monthlyChart=null;
 
 function renderDailyChart(records){
-  const canvas=document.getElementById('daily-chart');
-  if(!canvas) return;
-  const byHour={};
-  records.forEach(r=>{
-    const h=r.time?r.time.split(':')[0]+'시':'기타';
-    byHour[h]=(byHour[h]||0)+r.amt;
-  });
-  const labels=Object.keys(byHour).sort();
-  const data=labels.map(l=>byHour[l]);
+  var canvas=document.getElementById("daily-chart");
+  if(!canvas||typeof Chart==="undefined") return;
   if(dailyChart) dailyChart.destroy();
-  if(!labels.length){canvas.style.display='none';return;}
-  canvas.style.display='block';
+  if(!records.length){canvas.style.display="none";return;}
+  var catKeys=["정규","팝업","비기너","베이직","K-POP","워크샵"];
+  var catLabel={"정규":"REGULAR","팝업":"POP-UP","비기너":"BEGINNER","베이직":"BASIC","K-POP":"K-POP","워크샵":"WORKSHOP"};
+  var catColor={"정규":"#1a1a1a","팝업":"#2e7d32","비기너":"#c8b741","베이직":"#f5a623","K-POP":"#4a90d9","워크샵":"#9c27b0"};
+  var active=[],aLabels=[],aColors=[],aCounts=[];
+  catKeys.forEach(function(c){
+    var cnt=records.filter(function(r){return r.cat===c;}).length;
+    if(cnt>0){active.push(c);aLabels.push(catLabel[c]);aColors.push(catColor[c]);aCounts.push(cnt);}
+  });
+  if(!active.length){canvas.style.display="none";return;}
+  canvas.style.display="block";
   dailyChart=new Chart(canvas,{
-    type:'bar',
-    data:{labels,datasets:[{data,backgroundColor:'#378ADD',borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
-        y:{ticks:{callback:v=>'\u20A9'+v.toLocaleString('ko-KR'),font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}
+    type:"bar",
+    data:{labels:aLabels,datasets:[{data:aCounts,backgroundColor:aColors,borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y+"건";}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:12}}},y:{ticks:{stepSize:1,font:{size:11}},grid:{color:"rgba(0,0,0,0.04)"}}}}
   });
 }
 
