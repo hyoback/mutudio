@@ -337,7 +337,9 @@ tr:hover td{background:#fafaf9}
           <div class="chip" data-ticket="1 Ticket" data-on="orange" onclick="selTicket(this)">1 Ticket</div>
           <div class="chip" data-ticket="4 Tickets" data-on="green" onclick="selTicket(this)">4 Tickets</div>
           <div class="chip" data-ticket="8 Tickets" data-on="kpop" onclick="selTicket(this)">8 Tickets</div>
-          <div class="chip" data-ticket="월등록" data-on="purple" onclick="selTicket(this)">월등록</div>
+          <div class="chip" data-ticket="1 Basic" data-on="orange" onclick="selTicket(this)">1 Basic</div>
+          <div class="chip" data-ticket="월등록/PRO" data-on="purple" onclick="selTicket(this)">월등록/PRO</div>
+          <div class="chip" data-ticket="etc." data-on="blue" onclick="selTicket(this)">etc.</div>
         </div>
       </div>
       <div class="pay-sec">
@@ -352,8 +354,8 @@ tr:hover td{background:#fafaf9}
           <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
           <div class="amt-chip" onclick="addAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
           <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
+          <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
           <div class="amt-chip" onclick="addAmt(1000)"><span class="ac-name">물</span><span class="ac-val">+1,000</span></div>
-          <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">전문반</span><span class="ac-val">+700,000</span></div>
         </div>
         <div style="display:flex;gap:8px">
           <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
@@ -936,7 +938,7 @@ function selectBasicMonthly(btn){
   wrap.insertAdjacentElement('afterend', row);
 }
 
-const TICKET_PRICE={'1 Ticket':30000,'4 Tickets':110000,'8 Tickets':200000};
+const TICKET_PRICE={'1 Ticket':30000,'4 Tickets':110000,'8 Tickets':200000,'1 Basic':40000,'etc.':0,'월등록/PRO':0};
 function selTicket(el){
   const ticket=el.dataset.ticket,onClass='on-'+el.dataset.on;
   const wasSelected=(fTicket===ticket);
@@ -944,7 +946,9 @@ function selTicket(el){
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   if(fTicket){
     el.className='chip '+onClass;
-    if(TICKET_PRICE[fTicket]!==undefined){fAmt=TICKET_PRICE[fTicket];updateAmtDisplay();}
+    const price=TICKET_PRICE[fTicket];
+    if(price!==undefined&&price>0){fAmt=price;updateAmtDisplay();}
+    else if(price===0){/* etc/월등록PRO는 직접입력 */}
   } else {
     fAmt=0;updateAmtDisplay();
   }
