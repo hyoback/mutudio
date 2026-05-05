@@ -209,7 +209,7 @@ html,body{
     <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px" id="cs-name"></div>
     <div style="font-size:13px;color:#888;margin-bottom:20px">오늘 수업을 선택해 주세요</div>
     <div id="cs-classes" style="display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:16px"></div>
-    <button onclick="skipClassSelect()" style="width:100%;padding:10px;background:transparent;border:1px solid #ddd;border-radius:10px;font-family:inherit;font-size:13px;color:#aaa;cursor:pointer">수업 선택 안 함</button>
+    <button onclick="cancelClassSelect()" style="width:100%;padding:10px;background:transparent;border:1px solid #ddd;border-radius:10px;font-family:inherit;font-size:13px;color:#aaa;cursor:pointer">← 취소 (차감 안 함)</button>
   </div>
 </div>
 
@@ -297,19 +297,10 @@ async function submit(){
     const m=hit[0], dl=daysLeft(m.payDate);
     if(dl<=0){show('err',m.name+'님','수강권이 만료되었습니다','수강권 갱신이 필요합니다');return;}
     if(m.remaining<=0){show('err',m.name+'님','잔여 횟수가 없습니다','수강권 갱신이 필요합니다');return;}
-    const now2=new Date();
-    const today=now2.toISOString().split('T')[0];
-    const timeStr=String(now2.getHours()).padStart(2,'0')+':'+String(now2.getMinutes()).padStart(2,'0');
-    const history=[...(m.history||[]),{date:today,time:timeStr,id:Date.now()}];
-    await db.collection('members').doc(m.id).update({remaining:m.remaining-1,history});
-    const r=m.remaining-1;
-    const expDate=new Date(m.payDate);expDate.setDate(expDate.getDate()+28);
-    const expStr=(expDate.getMonth()+1)+'월 '+expDate.getDate()+'일';
-    const extra=(r>0
-      ?`<div class="r-remain ok"><span class="num">${r}</span>회 남았습니다</div>`
-      :`<div class="r-remain last">오늘이 마지막 수업입니다</div>`)
-      +`<div style="margin-top:14px;background:#f8f8f5;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;color:#555">📅 수강권 만료일 <span style="color:#204828;font-weight:700">${expStr}</span></div>`;
-    pendingMember={m,r,expStr,extra};
+    // 수업 선택 후 차감 — pendingMember에 멤버 정보 저장
+    const expDate0=new Date(m.payDate);expDate0.setDate(expDate0.getDate()+28);
+    const expStr0=(expDate0.getMonth()+1)+'월 '+expDate0.getDate()+'일';
+    pendingMember={m, expStr:expStr0};
     showClassSelect(m);
   }catch(e){
     show('err','오류 발생','잠시 후 다시 시도해 주세요','');
@@ -343,14 +334,19 @@ function showClassSelect(m){
   document.getElementById('class-overlay').style.display='flex';
 }
 
-function confirmClassSelect(teacher,cat,time){
+async function confirmClassSelect(teacher,cat,time){
   document.getElementById('class-overlay').style.display='none';
   if(!pendingMember) return;
-  const {m,r,expStr,extra}=pendingMember;
-  // payRecords에 결제 기록 저장 (4 Tickets 차감 기록)
+  const {m,expStr}=pendingMember;
+  pendingMember=null;
+  // 수업 선택 후 차감 실행
   const now2=new Date();
   const today=now2.toISOString().split('T')[0];
   const timeStr=String(now2.getHours()).padStart(2,'0')+':'+String(now2.getMinutes()).padStart(2,'0');
+  const history=[...(m.history||[]),{date:today,time:timeStr,id:Date.now()}];
+  await db.collection('members').doc(m.id).update({remaining:m.remaining-1,history});
+  const r=m.remaining-1;
+  // payRecords에 기록
   const rec={
     date:today, time:timeStr,
     name:m.name, teacher:teacher, cat:cat,
@@ -359,16 +355,18 @@ function confirmClassSelect(teacher,cat,time){
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
   };
   payColRef.add(rec).catch(function(e){console.error('결제기록 저장 오류:',e);});
-  pendingMember=null;
+  const extra=(r>0
+    ?`<div class="r-remain ok"><span class="num">${r}</span>회 남았습니다</div>`
+    :`<div class="r-remain last">오늘이 마지막 수업입니다</div>`)
+    +`<div style="margin-top:14px;background:#f8f8f5;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;color:#555">📅 수강권 만료일 <span style="color:#204828;font-weight:700">${expStr}</span></div>`;
   show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
 }
 
-function skipClassSelect(){
+function cancelClassSelect(){
+  // 취소 — 차감 없이 처음으로
   document.getElementById('class-overlay').style.display='none';
-  if(!pendingMember) return;
-  const {m,r,expStr,extra}=pendingMember;
   pendingMember=null;
-  show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
+  reset();
 }
 
 function show(type,name,msg,extra){
