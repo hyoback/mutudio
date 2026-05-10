@@ -123,6 +123,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .pass-type-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
 .pt4{background:#e6f1fb;color:#185fa5}.pt8{background:#eeedfe;color:#534ab7}
 .edit-btn{padding:8px 10px;border:1px solid #e0e0da;border-radius:8px;background:transparent;font-size:12px;color:#666;cursor:pointer}
+.renew-btn{padding:8px 10px;border:1px solid #1d9e75;border-radius:8px;background:#e1f5ee;font-size:12px;color:#0f6e56;cursor:pointer;font-weight:500}
+.renew-btn:hover{background:#c8edd8}
 .edit-btn:hover{border-color:#378add;color:#185fa5;background:#e6f1fb}
 .name-row{display:flex;gap:8px}.name-row input{flex:1}
 .empty{text-align:center;padding:48px 0;color:#aaa;font-size:14px}
@@ -262,6 +264,35 @@ tr:hover td{background:#fafaf9}
 .detail-table th{font-size:11px;font-weight:500;color:#888;text-align:left;padding:5px 8px;border-bottom:1px solid #eee}
 .detail-table td{padding:6px 8px;border-bottom:1px solid #f5f5f4;vertical-align:middle}
 .detail-table tr:last-child td{border-bottom:none}
+
+/* ── 당일 차감 위젯 ── */
+.today-widget{
+  position:fixed;right:20px;top:120px;
+  width:240px;
+  background:#fff;border:1px solid #e5e5e3;
+  border-radius:14px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.08);
+  z-index:30;
+  overflow:hidden;
+  transition:all .2s;
+}
+.today-widget-hd{
+  padding:10px 14px 8px;
+  border-bottom:1px solid #f0f0ee;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.today-widget-title{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;text-transform:uppercase}
+.today-widget-count{font-size:18px;font-weight:700;color:#1a1a1a}
+.today-widget-body{max-height:calc(100vh - 220px);overflow-y:auto;padding:8px 0}
+.tw-item{padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f4}
+.tw-item:last-child{border-bottom:none}
+.tw-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;background:#e1f5ee;color:#0f6e56}
+.tw-info{flex:1;min-width:0}
+.tw-name{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tw-detail{font-size:10px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tw-time{font-size:10px;color:#bbb;flex-shrink:0}
+.tw-empty{padding:20px 14px;text-align:center;font-size:12px;color:#bbb}
+.today-widget.hidden-widget{display:none}
 </style>
 </head>
 <body>
@@ -439,6 +470,17 @@ tr:hover td{background:#fafaf9}
 
 <!-- ══ 다회권 관리 페이지 ══ -->
 <div class="page" id="page-pass">
+<!-- 당일 차감 위젯 -->
+<div class="today-widget hidden-widget" id="today-widget">
+  <div class="today-widget-hd">
+    <span class="today-widget-title">오늘 수강</span>
+    <span class="today-widget-count" id="tw-count">0</span>
+  </div>
+  <div class="today-widget-body" id="tw-body">
+    <div class="tw-empty">오늘 수강 내역 없음</div>
+  </div>
+</div>
+
 <div class="container">
   <div class="header">
     <div>
@@ -547,6 +589,8 @@ function switchMainTab(id){
   document.getElementById('page-pay').classList.toggle('active',id==='pay');
   document.getElementById('page-pass').classList.toggle('active',id==='pass');
   if(id==='pay') updatePayStats();
+  if(id==='pass') renderTodayWidget();
+  else { const w=document.getElementById('today-widget'); if(w) w.classList.add('hidden-widget'); }
 }
 </script>
 
@@ -600,6 +644,20 @@ window.saveEdit=async()=>{const id=document.getElementById('edit-id').value;cons
 window.openModal=()=>{selectedPass=4;document.querySelectorAll('.pass-btn').forEach((b,i)=>b.classList.toggle('active',i===0));document.getElementById('inp-name').value='';document.getElementById('inp-name-en').value='';document.getElementById('inp-phone').value='010-';document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];document.getElementById('modal').classList.add('show');setTimeout(()=>document.getElementById('inp-name').focus(),50);};
 window.closeModal=()=>document.getElementById('modal').classList.remove('show');
 window.saveNew=async()=>{const name=document.getElementById('inp-name').value.trim();const nameEn=document.getElementById('inp-name-en').value.trim();const phone=document.getElementById('inp-phone').value.trim();const payDate=document.getElementById('inp-date').value;if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}setSyncStatus('saving');await addDoc(colRef,{name,nameEn,phone,payDate,passType:selectedPass,remaining:selectedPass,avIdx:members.length%AV.length,memo:'',history:[],createdAt:serverTimestamp()});closeModal();toast(`${name}님 등록 완료!`);};
+
+window.renewPass=async(id)=>{
+  const m=members.find(x=>x.id===id);
+  if(!m) return;
+  const passType=m.passType||4;
+  if(!confirm(m.name+'님 '+passType+'회권 재결제 처리할까요?\n결제일이 오늘로 갱신되고 잔여 횟수가 '+passType+'회로 리셋됩니다.')) return;
+  const today=new Date().toISOString().split('T')[0];
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',id),{
+    remaining:passType,
+    payDate:today,
+  });
+  toast(m.name+'님 재결제 완료! ('+passType+'회 리셋)');
+};
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeEdit();});
 function render(){
@@ -610,6 +668,62 @@ function render(){
   if(searchQuery){ri.style.display='block';ri.innerHTML=`"<span>${searchQuery}</span>" 검색 결과 — ${filtered.length}명`;}else ri.style.display='none';
   if(!filtered.length){document.getElementById('members').innerHTML=`<div class="empty">${searchQuery?`"${searchQuery}"에 해당하는 회원이 없습니다.`:'등록된 회원이 없습니다.'}</div>`;return;}
   const today=new Date().toISOString().split('T')[0];
+
+// ── 당일 차감 위젯 ──
+function renderTodayWidget(){
+  const widget=document.getElementById('today-widget');
+  const body=document.getElementById('tw-body');
+  const countEl=document.getElementById('tw-count');
+  if(!widget) return;
+
+  // 다회권 관리 탭에서만 표시
+  const passPage=document.getElementById('page-pass');
+  if(!passPage||!passPage.classList.contains('active')){
+    widget.classList.add('hidden-widget');
+    return;
+  }
+  widget.classList.remove('hidden-widget');
+
+  const todayStr=new Date().toISOString().split('T')[0];
+  // 오늘 수강한 이력 수집
+  const todayItems=[];
+  members.forEach(m=>{
+    (m.history||[]).forEach(h=>{
+      if(h.date===todayStr){
+        todayItems.push({
+          name:m.name,
+          time:h.time||'',
+          teacher:h.teacher||'',
+          avIdx:m.avIdx||0,
+        });
+      }
+    });
+  });
+  // 시간순 정렬
+  todayItems.sort((a,b)=>(a.time>b.time?1:-1));
+
+  countEl.textContent=todayItems.length;
+  const avColors=['#e1f5ee','#eeedfe','#faece7','#e6f1fb','#fbeaf0'];
+  const avText=['#0f6e56','#534ab7','#993c1d','#185fa5','#993556'];
+
+  if(!todayItems.length){
+    body.innerHTML='<div class="tw-empty">오늘 수강 내역 없음</div>';
+    return;
+  }
+  body.innerHTML=todayItems.map((item,i)=>{
+    const av=i%5;
+    const initials=item.name.slice(0,2);
+    return `<div class="tw-item">
+      <div class="tw-avatar" style="background:${avColors[av]};color:${avText[av]}">${initials}</div>
+      <div class="tw-info">
+        <div class="tw-name">${item.name}</div>
+        <div class="tw-detail">${item.teacher||'—'}</div>
+      </div>
+      <div class="tw-time">${item.time||''}</div>
+    </div>`;
+  }).join('');
+}
+
   document.getElementById('members').innerHTML=filtered.map(m=>{
     const dl=daysLeft(m.payDate),isExp=dl<=0||m.remaining<=0,urgent=!isExp&&(dl<=7||m.remaining===1);
     const cardCls=isExp?'expired':urgent?'urgent':'good',badgeCls=isExp?'be':urgent?'bu':'bv',badgeText=isExp?(m.remaining<=0?'소진':'만료'):`D-${dl}`;
@@ -621,7 +735,11 @@ function render(){
     const progW=Math.max(0,Math.min(100,(28-Math.max(0,dl))/28*100)),progColor=isExp?'#e24b4a':urgent?'#ef9f27':'#1d9e75';
     const isHL=searchQuery&&(m.name.includes(searchQuery)||m.phone.replace(/-/g,'').includes(searchQuery.replace(/-/g,'')));
     const memoEsc=(m.memo||'').replace(/"/g,'&quot;'),canUndo=m.remaining<passType,history=m.history||[];
-    const histItems=history.length===0?`<div class="history-empty">수강 이력 없음</div>`:`<div class="history-list">${history.slice().reverse().map(h=>`<div class="history-item"><span class="history-date">${h.date.replace(/-/g,'.')}</span><button class="history-del" onclick="deleteHistory('${m.id}',${h.id})">✕</button></div>`).join('')}</div>`;
+    const histItems=history.length===0?`<div class="history-empty">수강 이력 없음</div>`:`<div class="history-list">${history.slice().reverse().map(h=>`<div class="history-item">
+  <span class="history-date">${h.date.replace(/-/g,'.')}${h.time?' <span style="color:#aaa;font-size:11px">'+h.time+'</span>':''}</span>
+  ${h.teacher?`<span style="font-size:11px;color:#555;font-weight:500">${h.teacher}</span>`:''}
+  <button class="history-del" onclick="deleteHistory('${m.id}',${h.id})">✕</button>
+</div>`).join('')}</div>`;
     return `<div class="member-card ${cardCls}${isHL?' hl':''}" data-id="${m.id}">
       <div class="card-top">
         <div class="avatar ${av}">${initials(m.name)}</div>
@@ -645,6 +763,7 @@ function render(){
       <div class="card-actions">
         <button class="deduct-btn" onclick="deduct('${m.id}')" ${isExp?'disabled':''}>수강 차감 (-1회)</button>
         <button class="undo-btn" onclick="undoDeduct('${m.id}')" ${!canUndo?'disabled':''}>↩ 취소</button>
+        <button class="renew-btn" onclick="renewPass('${m.id}')">🔄 재결제</button>
         <button class="edit-btn" onclick="openEdit('${m.id}')">✏️ 수정</button>
         <button class="del-btn" onclick="removeMember('${m.id}')">삭제</button>
       </div>
@@ -667,6 +786,7 @@ function render(){
       </div>
     </div>`;
   }).join('');
+  renderTodayWidget();
 }
 </script>
 
@@ -682,16 +802,16 @@ const TIMETABLE = {
     {t:'SYA',        cat:'K-POP',  time:'4:30'},
     {t:'LEEKO',      cat:'비기너', time:'4:50'},
     {t:'PITU',       cat:'베이직', time:'5:30'},
-    {t:'JUJU',       cat:'정규',   time:'5:50'},
-    {t:'GOOSEUL',    cat:'정규',   time:'7:00'},
-    {t:'HYOS',       cat:'베이직', time:'7:20'},
     {t:'RENYO',      cat:'팝업',   time:'5:30'},
     {t:'DAIM',       cat:'팝업',   time:'5:30'},
     {t:'SUHWA',      cat:'팝업',   time:'5:30'},
+    {t:'JUJU',       cat:'정규',   time:'5:50'},
+    {t:'GOOSEUL',    cat:'정규',   time:'7:00'},
+    {t:'HYOS',       cat:'베이직', time:'7:20'},
     {t:'JIOH',       cat:'팝업',   time:'8:20'},
     {t:'JIA',        cat:'팝업',   time:'8:20'},
   ],
-    1:[// 월
+  1:[// 월
     {t:'MANDUCK',    cat:'정규',   time:'6:10'},
     {t:'LINY',       cat:'정규',   time:'7:20'},
     {t:'WANNA',      cat:'베이직', time:'7:30'},
@@ -700,15 +820,15 @@ const TIMETABLE = {
     {t:'SIR',        cat:'팝업',   time:'8:40'},
   ],
   2:[// 화
-    {t:'CHAERIN',    cat:'K-POP',  time:'6:00'},
-    {t:'HINARI',     cat:'정규',   time:'6:10'},
-    {t:'BUCKEY',     cat:'팝업',   time:'7:20'},
-    {t:'KUNA',       cat:'팝업',   time:'7:20'},
-    {t:'PITU',       cat:'팝업',   time:'7:20'},
-    {t:'TEDDY',      cat:'정규',   time:'7:30'},
-    {t:'HYNN',       cat:'팝업',   time:'8:40'},
+    {t:'CHAERIN',      cat:'K-POP',  time:'6:00'},
+    {t:'HINARI',       cat:'정규',   time:'6:10'},
+    {t:'BUCKEY',       cat:'팝업',   time:'7:20'},
+    {t:'KUNA',         cat:'팝업',   time:'7:20'},
+    {t:'PITU',         cat:'팝업',   time:'7:20'},
+    {t:'TEDDY',        cat:'정규',   time:'7:30'},
+    {t:'HYNN',         cat:'팝업',   time:'8:40'},
     {t:'NOHWON X SSONG', cat:'팝업', time:'8:40'},
-    {t:'EVE',        cat:'베이직', time:'8:50'},
+    {t:'EVE',          cat:'베이직', time:'8:50'},
   ],
   3:[// 수
     {t:'SSOJU',      cat:'정규',   time:'6:10'},
@@ -718,7 +838,7 @@ const TIMETABLE = {
     {t:'BUCKEY',     cat:'팝업',   time:'7:20'},
     {t:'EVE',        cat:'정규',   time:'7:30'},
     {t:'YENI CHO',   cat:'베이직', time:'8:40'},
-    {t:'LETDO X PITU X SSONG', cat:'팝업', time:'8:40'},
+    {t:'LETDO X PITU', cat:'팝업', time:'8:40'},
   ],
   4:[// 목
     {t:'SOPHIEHEN',  cat:'정규',   time:'6:10'},
@@ -738,21 +858,22 @@ const TIMETABLE = {
     {t:'YENI CHO',   cat:'정규',   time:'8:50'},
   ],
   6:[// 토
-    {t:'SYA',        cat:'K-POP',  time:'4:10'},
-    {t:'REALEE',     cat:'비기너', time:'4:50'},
-    {t:'MINA MYOUNG',cat:'비기너', time:'5:30'},
-    {t:'AZHA X ARMSEOK', cat:'팝업', time:'5:30'},
-    {t:'HYOS X COI', cat:'팝업',   time:'5:30'},
-    {t:'LETDO',      cat:'정규',   time:'5:50'},
-    {t:'HANNAH',     cat:'팝업',   time:'7:00'},
-    {t:'BELIEVE',    cat:'정규',   time:'7:00'},
-    {t:'GUMA',       cat:'팝업',   time:'7:20'},
-    {t:'HAIAN',      cat:'팝업',   time:'7:20'},
-    {t:'AUSTIN',     cat:'팝업',   time:'7:20'},
-    {t:'SSONG',      cat:'팝업',   time:'8:20'},
-    {t:'ROSY',       cat:'팝업',   time:'8:20'},
-    {t:'PIKI',       cat:'팝업',   time:'8:20'},
-    {t:'TEDDY X KAAN', cat:'팝업', time:'8:20'},
+    {t:'SYA',            cat:'K-POP',  time:'4:10'},
+    {t:'REALEE',         cat:'비기너', time:'4:50'},
+    {t:'MINA MYOUNG',    cat:'비기너', time:'5:30'},
+    {t:'AZHA X ARMSEOK', cat:'팝업',   time:'5:30'},
+    {t:'HYOS X COI',     cat:'팝업',   time:'5:30'},
+    {t:'LETDO',          cat:'정규',   time:'5:50'},
+    {t:'HANNAH',         cat:'팝업',   time:'7:00'},
+    {t:'BELIEVE',        cat:'정규',   time:'7:00'},
+    {t:'GUMA',           cat:'팝업',   time:'7:20'},
+    {t:'HAIAN',          cat:'팝업',   time:'7:20'},
+    {t:'AUSTIN',         cat:'팝업',   time:'7:20'},
+    {t:'TEDDY X KAAN',   cat:'팝업',   time:'8:20'},
+    {t:'SSONG',          cat:'팝업',   time:'8:20'},
+    {t:'ROSY',           cat:'팝업',   time:'8:20'},
+    {t:'PIKI',           cat:'팝업',   time:'8:20'},
+    {t:'HALO',           cat:'팝업',   time:'8:20'},
   ],
 };
 
