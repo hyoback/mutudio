@@ -159,6 +159,16 @@ html,body{
 .cs-btn:hover{background:#f5f5f0;border-color:#bbb}
 .cs-time{font-size:12px;color:#aaa;font-weight:400}
 .cs-cat{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:none;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-card{background:#fff;border-radius:20px;padding:32px 28px;width:88vw;max-width:360px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
+.confirm-emoji{font-size:44px;margin-bottom:12px}
+.confirm-msg{font-size:17px;font-weight:700;color:#1a1a1a;line-height:1.5;margin-bottom:6px}
+.confirm-sub{font-size:13px;color:#aaa;margin-bottom:28px}
+.confirm-btns{display:flex;gap:10px}
+.confirm-yes{flex:2;padding:14px;background:#204828;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+.confirm-no{flex:1;padding:14px;background:#f5f5f0;color:#888;border:none;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit}
 </style>
 </head>
 <body>
@@ -190,9 +200,11 @@ html,body{
       <button class="key" onclick="press('7')">7</button>
       <button class="key" onclick="press('8')">8</button>
       <button class="key" onclick="press('9')">9</button>
-      <button class="key del" onclick="del()">⌫</button>
+      <div></div>
       <button class="key" onclick="press('0')">0</button>
-      <button class="key submit" id="submit-btn" onclick="submit()" disabled style="flex-direction:column;gap:3px;height:clamp(70px,10vh,88px)">체크인<span style="font-size:10px;font-weight:400;letter-spacing:2px;opacity:0.7">CHECK-IN</span></button>
+      <button class="key del" onclick="del()">⌫</button>
+      <button class="key submit" id="submit-btn" onclick="submit()" disabled
+        style="grid-column:1/-1;flex-direction:column;gap:3px;height:clamp(70px,10vh,88px)">체크인<span style="font-size:10px;font-weight:400;letter-spacing:2px;opacity:0.7">CHECK-IN</span></button>
     </div>
   </div>
 
@@ -202,6 +214,19 @@ html,body{
   </div>
 </div>
 
+
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-card">
+    <div class="confirm-emoji">🎵</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-sub" id="confirm-sub">수업을 수강하시겠습니까?</div>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="cancelConfirm()">← 돌아가기</button>
+      <button class="confirm-yes" onclick="doConfirm()">✓ 확인</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="class-overlay" style="display:none">
   <div class="overlay-bg"></div>
@@ -252,6 +277,7 @@ const TIMETABLE={
 const CAT_COLOR_K={'정규':'#1a1a1a','팝업':'#2e7d32','비기너':'#c8b741','베이직':'#f5a623','K-POP':'#4a90d9'};
 const CAT_LABEL_K={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'};
 let pendingMember=null;
+let pendingClass=null;
 
 let input='', timerInt=null;
 
@@ -325,13 +351,38 @@ function showClassSelect(m){
       +'<span class="cs-time">'+c.time+'</span>'
       +'<span class="cs-cat" style="background:'+col+'20;color:'+col+'">'+lbl+'</span>'
       +'</div>';
-    btn.addEventListener('click',function(){confirmClassSelect(c.t,c.cat,c.time);});
+    btn.addEventListener('click',function(){showConfirm(c.t,c.cat,c.time);});
     wrap.appendChild(btn);
   });
   if(!classes.length){
     wrap.innerHTML='<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">오늘 등록된 수업이 없습니다</div>';
   }
   document.getElementById('class-overlay').style.display='flex';
+}
+
+
+function showConfirm(teacher,cat,time){
+  pendingClass={teacher,cat,time};
+  const CAT_LABEL_KR={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'};
+  const lbl=CAT_LABEL_KR[cat]||cat;
+  const timeLabel=time?time+'PM ':' ';
+  document.getElementById('confirm-msg').textContent=
+    teacher+' · '+timeLabel+lbl+' 수업';
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+
+function cancelConfirm(){
+  document.getElementById('confirm-overlay').classList.remove('show');
+  pendingClass=null;
+  // 수업 선택 화면으로 돌아감
+}
+
+async function doConfirm(){
+  document.getElementById('confirm-overlay').classList.remove('show');
+  if(!pendingClass||!pendingMember) return;
+  const {teacher,cat,time}=pendingClass;
+  pendingClass=null;
+  await confirmClassSelect(teacher,cat,time);
 }
 
 async function confirmClassSelect(teacher,cat,time){
