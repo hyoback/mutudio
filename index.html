@@ -589,8 +589,15 @@ function switchMainTab(id){
   document.getElementById('page-pay').classList.toggle('active',id==='pay');
   document.getElementById('page-pass').classList.toggle('active',id==='pass');
   if(id==='pay') updatePayStats();
-  if(id==='pass') renderTodayWidget();
-  else { const w=document.getElementById('today-widget'); if(w) w.classList.add('hidden-widget'); }
+  if(id==='pass'){
+    // 위젯 즉시 표시
+    const w=document.getElementById('today-widget');
+    if(w) w.classList.remove('hidden-widget');
+    setTimeout(renderTodayWidget, 50);
+  } else {
+    const w=document.getElementById('today-widget');
+    if(w) w.classList.add('hidden-widget');
+  }
 }
 </script>
 
@@ -618,7 +625,7 @@ const AV=['av0','av1','av2','av3','av4'];
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();},(err)=>{setSyncStatus('err');console.error(err);});
+onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();renderTodayWidget();},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
@@ -631,7 +638,18 @@ window.toggleStats=()=>{statsOpen=!statsOpen;document.getElementById('stats').cl
 window.onSearch=(val)=>{searchQuery=val.trim();document.getElementById('search-clear').style.display=val?'block':'none';render();};
 window.clearSearch=()=>{document.getElementById('search').value='';searchQuery='';document.getElementById('search-clear').style.display='none';render();};
 window.fmtPhone=(input)=>{let raw=input.value.replace(/\D/g,'');if(raw.length===0){input.value='010-';return;}if(!raw.startsWith('010'))raw='010'+raw.replace(/^010*/,'');if(raw.length<=3)input.value=raw;else if(raw.length<=7)input.value=raw.slice(0,3)+'-'+raw.slice(3);else if(raw.length<=11)input.value=raw.slice(0,3)+'-'+raw.slice(3,7)+'-'+raw.slice(7);else input.value=raw.slice(0,3)+'-'+raw.slice(3,7)+'-'+raw.slice(7,11);};
-window.deduct=async(id)=>{const m=members.find(x=>x.id===id);if(!m||m.remaining<=0)return;if(daysLeft(m.payDate)<=0){toast('유효기간이 만료된 수강권입니다.');return;}const today=new Date().toISOString().split('T')[0];const history=[...(m.history||[]),{date:today,id:Date.now()}];setSyncStatus('saving');await updateDoc(doc(db,'members',id),{remaining:m.remaining-1,history});toast(`${m.name}님 수강 처리 완료 (잔여 ${m.remaining-1}회)`);};
+window.deduct=async(id)=>{
+  const m=members.find(x=>x.id===id);
+  if(!m||m.remaining<=0)return;
+  if(daysLeft(m.payDate)<=0){toast('유효기간이 만료된 수강권입니다.');return;}
+  const now=new Date();
+  const today=now.toISOString().split('T')[0];
+  const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const history=[...(m.history||[]),{date:today,time:timeStr,id:Date.now()}];
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',id),{remaining:m.remaining-1,history});
+  toast(`${m.name}님 수강 처리 완료 (잔여 ${m.remaining-1}회)`);
+};
 window.undoDeduct=async(id)=>{const m=members.find(x=>x.id===id);if(!m||m.remaining>=(m.passType||4))return;setSyncStatus('saving');await updateDoc(doc(db,'members',id),{remaining:m.remaining+1});toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);};
 window.saveMemo=async(id,val)=>{await updateDoc(doc(db,'members',id),{memo:val});};
 window.addHistory=async(id,dateVal)=>{if(!dateVal){toast('날짜를 선택해 주세요.');return;}const m=members.find(x=>x.id===id);if(!m)return;const history=[...(m.history||[]),{date:dateVal,id:Date.now()}];history.sort((a,b)=>a.date.localeCompare(b.date));setSyncStatus('saving');await updateDoc(doc(db,'members',id),{history});toast('수강 이력 추가됨');};
@@ -707,6 +725,8 @@ function renderTodayWidget(){
     return;
   }
   widget.classList.remove('hidden-widget');
+  // members 없으면 종료
+  if(!members||!members.length) return;
 
   const todayStr=new Date().toISOString().split('T')[0];
   // 오늘 수강한 이력 수집
@@ -724,7 +744,7 @@ function renderTodayWidget(){
     });
   });
   // 시간순 정렬
-  todayItems.sort((a,b)=>(a.time>b.time?-1:1)); // 최신 차감이 맨 위
+  todayItems.sort((a,b)=>{ if(!a.time&&!b.time) return 0; if(!a.time) return 1; if(!b.time) return -1; return b.time.localeCompare(a.time); }); // 시간 늦은 순
 
   countEl.textContent=todayItems.length;
   const avColors=['#e1f5ee','#eeedfe','#faece7','#e6f1fb','#fbeaf0'];
