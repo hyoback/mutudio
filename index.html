@@ -493,10 +493,11 @@ tr:hover td{background:#fafaf9}
     <input class="search-input" id="search" placeholder="이름 또는 전화번호 검색..." oninput="onSearch(this.value)" />
     <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
   </div>
-  <div class="filter-row">
-    <button class="filt-btn active" data-filter="all" onclick="setFilter('all')">전체</button>
-    <button class="filt-btn" data-filter="4" onclick="setFilter('4')">4 Tickets</button>
-    <button class="filt-btn" data-filter="8" onclick="setFilter('8')">8 Tickets</button>
+  <div class="filter-row" id="filter-row">
+    <button class="filt-btn active" data-filter="all" onclick="setFilter('all')" id="filt-all">전체 수강생</button>
+    <button class="filt-btn" data-filter="4" onclick="setFilter('4')" id="filt-4">4 Tickets</button>
+    <button class="filt-btn" data-filter="8" onclick="setFilter('8')" id="filt-8">8 Tickets</button>
+    <button class="filt-btn" data-filter="expired" onclick="setFilter('expired')" id="filt-exp">만료·소진</button>
   </div>
   <div class="stats-toggle" onclick="toggleStats()">
     <span class="stats-toggle-label">현황 요약</span>
@@ -624,7 +625,7 @@ const AV=['av0','av1','av2','av3','av4'];
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();renderTodayWidget();},(err)=>{setSyncStatus('err');console.error(err);});
+onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();},(err)=>{setSyncStatus('err');console.error(err);});,(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
@@ -703,11 +704,30 @@ document.getElementById('modal').addEventListener('click',function(e){if(e.targe
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeEdit();});
 function render(){
   const total=members.length,active=members.filter(m=>daysLeft(m.payDate)>0&&m.remaining>0).length,expired=members.filter(m=>daysLeft(m.payDate)<=0||m.remaining<=0).length;
-  document.getElementById('stats').innerHTML=`<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 회원</div></div><div class="stat-card"><div class="stat-num" style="color:#1d9e75">${active}</div><div class="stat-label">유효 수강권</div></div><div class="stat-card"><div class="stat-num" style="color:#e24b4a">${expired}</div><div class="stat-label">만료·소진</div></div>`;
-  let filtered=members.filter(m=>{if(filterMode!=='all'&&String(m.passType||4)!==filterMode)return false;if(!searchQuery)return true;const q=searchQuery.replace(/-/g,'');return m.name.includes(searchQuery)||m.phone.replace(/-/g,'').includes(q);});
+  document.getElementById('stats').innerHTML=`<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 수강생</div></div><div class="stat-card"><div class="stat-num" style="color:#1d9e75">${active}</div><div class="stat-label">유효 수강권</div></div><div class="stat-card"><div class="stat-num" style="color:#e24b4a">${expired}</div><div class="stat-label">만료·소진</div></div>`;
+  // 필터 버튼 카운트 업데이트
+  const cnt4=members.filter(m=>String(m.passType||4)==='4'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cnt8=members.filter(m=>String(m.passType||4)==='8'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cntExp=members.filter(m=>daysLeft(m.payDate)<=0||m.remaining<=0).length;
+  const cntAll=members.length;
+  const fb=document.getElementById('filt-all');if(fb)fb.textContent='전체 수강생 ('+cntAll+')';
+  const f4=document.getElementById('filt-4');if(f4)f4.textContent='4 Tickets ('+cnt4+')';
+  const f8=document.getElementById('filt-8');if(f8)f8.textContent='8 Tickets ('+cnt8+')';
+  const fe=document.getElementById('filt-exp');if(fe)fe.textContent='만료·소진 ('+cntExp+')';
+  let filtered=members.filter(m=>{
+    if(filterMode==='expired'){
+      const isExp=daysLeft(m.payDate)<=0||m.remaining<=0;
+      if(!isExp) return false;
+    } else if(filterMode!=='all'){
+      if(String(m.passType||4)!==filterMode) return false;
+    }
+    if(!searchQuery)return true;
+    const q=searchQuery.replace(/-/g,'');
+    return m.name.includes(searchQuery)||m.phone.replace(/-/g,'').includes(q);
+  });
   const ri=document.getElementById('result-info');
   if(searchQuery){ri.style.display='block';ri.innerHTML=`"<span>${searchQuery}</span>" 검색 결과 — ${filtered.length}명`;}else ri.style.display='none';
-  if(!filtered.length){document.getElementById('members').innerHTML=`<div class="empty">${searchQuery?`"${searchQuery}"에 해당하는 회원이 없습니다.`:'등록된 회원이 없습니다.'}</div>`;return;}
+  if(!filtered.length){document.getElementById('members').innerHTML=`<div class="empty">${searchQuery?`"${searchQuery}"에 해당하는 회원이 없습니다.`:'등록된 회원이 없습니다.'}</div>`;renderTodayWidget();return;}
   const today=new Date().toISOString().split('T')[0];
 
 // ── 당일 차감 위젯 ──
@@ -719,13 +739,12 @@ function renderTodayWidget(){
 
   // 다회권 관리 탭에서만 표시
   const passPage=document.getElementById('page-pass');
-  if(!passPage||!passPage.classList.contains('active')){
+  const isPassActive=passPage&&passPage.classList.contains('active');
+  if(!isPassActive){
     widget.classList.add('hidden-widget');
     return;
   }
   widget.classList.remove('hidden-widget');
-  // members 없으면 종료
-  if(!members||!members.length) return;
 
   const todayStr=new Date().toISOString().split('T')[0];
   // 오늘 수강한 이력 수집
