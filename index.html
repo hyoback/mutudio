@@ -329,11 +329,10 @@ tr:hover td{background:#fafaf9}
     <div class="title">일반 결제 관리</div>
     <button class="icon-btn" onclick="exportCSV()">CSV 내보내기</button>
   </div>
-  <div class="pay-stats">
-    <div class="pay-stat"><div class="pay-stat-lbl">전체 건수</div><div class="pay-stat-val" id="ps-cnt">0</div></div>
-    <div class="pay-stat"><div class="pay-stat-lbl">전체 매출</div><div class="pay-stat-val" id="ps-tot">&#8361;0</div></div>
-    <div class="pay-stat"><div class="pay-stat-lbl">이번 달 매출</div><div class="pay-stat-val" id="ps-mon">&#8361;0</div></div>
-    <div class="pay-stat"><div class="pay-stat-lbl">카드/이체/현금</div><div class="pay-stat-val" id="ps-pay" style="font-size:14px">0/0/0</div></div>
+  <div class="pay-stats" style="grid-template-columns:1fr 1fr">
+    <div class="pay-stat"><div class="pay-stat-lbl">오늘 건수</div><div class="pay-stat-val" id="ps-cnt">0</div></div>
+    <div class="pay-stat"><div class="pay-stat-lbl">오늘 카드 / 이체 / 현금</div><div class="pay-stat-val" id="ps-pay" style="font-size:14px">0 / 0 / 0</div></div>
+  </div>
   </div>
   <div class="pay-nav">
     <button class="pay-nav-btn on" onclick="switchPayTab('input',this)">결제 입력</button>
@@ -845,7 +844,7 @@ const TIMETABLE = {
   0:[// 일
     {t:'SYA',        cat:'K-POP',  time:'4:30'},
     {t:'LEEKO',      cat:'비기너', time:'4:50'},
-    {t:'PITU',       cat:'베이직', time:'5:30'},
+    {t:'PITU',       cat:'팝업',   time:'5:30'},
     {t:'RENYO',      cat:'팝업',   time:'5:30'},
     {t:'DAIM',       cat:'팝업',   time:'5:30'},
     {t:'SUHWA',      cat:'팝업',   time:'5:30'},
@@ -1176,16 +1175,13 @@ function clearPayForm(){
 }
 
 function updatePayStats(){
-  const tot=payRecords.reduce((s,r)=>s+r.amt,0);
-  const ym=new Date().toISOString().slice(0,7);
-  const mon=payRecords.filter(r=>r.date.startsWith(ym)).reduce((s,r)=>s+r.amt,0);
-  const cd=payRecords.filter(r=>r.pay==='카드').length;
-  const tf=payRecords.filter(r=>r.pay==='이체').length;
-  const cs=payRecords.filter(r=>r.pay==='현금').length;
-  document.getElementById('ps-cnt').textContent=payRecords.length;
-  document.getElementById('ps-tot').textContent=fmtW(tot);
-  document.getElementById('ps-mon').textContent=fmtW(mon);
-  document.getElementById('ps-pay').textContent=cd+'/'+tf+'/'+cs;
+  const today=new Date().toISOString().split('T')[0];
+  const todayRecs=payRecords.filter(r=>r.date===today);
+  const cd=todayRecs.filter(r=>r.pay==='카드').length;
+  const tf=todayRecs.filter(r=>r.pay==='이체').length;
+  const cs=todayRecs.filter(r=>r.pay==='현금').length;
+  document.getElementById('ps-cnt').textContent=todayRecs.length;
+  document.getElementById('ps-pay').textContent=cd+' / '+tf+' / '+cs;
 }
 
 function switchPayTab(id,btn){
