@@ -473,7 +473,7 @@ tr:hover td{background:#fafaf9}
 <!-- 당일 차감 위젯 -->
 <div class="today-widget hidden-widget" id="today-widget">
   <div class="today-widget-hd">
-    <span class="today-widget-title">오늘 수강</span>
+    <span class="today-widget-title">오늘 차감 내역</span>
     <span class="today-widget-count" id="tw-count">0</span>
   </div>
   <div class="today-widget-body" id="tw-body">
@@ -625,7 +625,7 @@ function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate(
 function initials(n){return n.slice(0,2);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function hlMatch(text,q){if(!q)return text;const i=text.indexOf(q);if(i===-1)return text;return text.slice(0,i)+`<span class="hl-text">${text.slice(i,i+q.length)}</span>`+text.slice(i+q.length);}
-window.setFilter=(f)=>{filterMode=f;document.querySelectorAll('.filt-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));render();};
+window.setFilter=(f)=>{filterMode=f;document.querySelectorAll('.filt-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));render();renderTodayWidget();};
 window.selectPass=(btn,val)=>{selectedPass=val;document.querySelectorAll('.pass-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');};
 window.toggleStats=()=>{statsOpen=!statsOpen;document.getElementById('stats').classList.toggle('hidden',!statsOpen);document.getElementById('stats-arrow').classList.toggle('open',statsOpen);};
 window.onSearch=(val)=>{searchQuery=val.trim();document.getElementById('search-clear').style.display=val?'block':'none';render();};
@@ -645,15 +645,39 @@ window.openModal=()=>{selectedPass=4;document.querySelectorAll('.pass-btn').forE
 window.closeModal=()=>document.getElementById('modal').classList.remove('show');
 window.saveNew=async()=>{const name=document.getElementById('inp-name').value.trim();const nameEn=document.getElementById('inp-name-en').value.trim();const phone=document.getElementById('inp-phone').value.trim();const payDate=document.getElementById('inp-date').value;if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}setSyncStatus('saving');await addDoc(colRef,{name,nameEn,phone,payDate,passType:selectedPass,remaining:selectedPass,avIdx:members.length%AV.length,memo:'',history:[],createdAt:serverTimestamp()});closeModal();toast(`${name}님 등록 완료!`);};
 
-window.renewPass=async(id)=>{
+window.renewPass=(id)=>{
   const m=members.find(x=>x.id===id);
   if(!m) return;
-  const passType=m.passType||4;
-  if(!confirm(m.name+'님 '+passType+'회권 재결제 처리할까요?\n결제일이 오늘로 갱신되고 잔여 횟수가 '+passType+'회로 리셋됩니다.')) return;
+  // 4/8 선택 모달
+  const existing=document.getElementById('renew-modal');
+  if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='renew-modal';
+  modal.className='modal-bg show';
+  modal.innerHTML=`<div class="modal" style="width:300px">
+    <div class="modal-title">🔄 재결제 — ${m.name}님</div>
+    <div style="font-size:13px;color:#888;margin-bottom:16px">수강권 종류를 선택해 주세요.<br>결제일이 오늘로 갱신됩니다.</div>
+    <div class="pass-select" style="gap:10px">
+      <button class="pass-btn" onclick="confirmRenew('${id}',4)">4 Tickets</button>
+      <button class="pass-btn" onclick="confirmRenew('${id}',8)">8 Tickets</button>
+    </div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-cancel" onclick="document.getElementById('renew-modal').remove()">취소</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',function(e){if(e.target===this)this.remove();});
+  document.body.appendChild(modal);
+};
+
+window.confirmRenew=async(id,passType)=>{
+  document.getElementById('renew-modal')?.remove();
+  const m=members.find(x=>x.id===id);
+  if(!m) return;
   const today=new Date().toISOString().split('T')[0];
   setSyncStatus('saving');
   await updateDoc(doc(db,'members',id),{
     remaining:passType,
+    passType:passType,
     payDate:today,
   });
   toast(m.name+'님 재결제 완료! ('+passType+'회 리셋)');
@@ -700,7 +724,7 @@ function renderTodayWidget(){
     });
   });
   // 시간순 정렬
-  todayItems.sort((a,b)=>(a.time>b.time?1:-1));
+  todayItems.sort((a,b)=>(a.time>b.time?-1:1)); // 최신 차감이 맨 위
 
   countEl.textContent=todayItems.length;
   const avColors=['#e1f5ee','#eeedfe','#faece7','#e6f1fb','#fbeaf0'];
