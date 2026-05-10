@@ -343,7 +343,7 @@ async function confirmClassSelect(teacher,cat,time){
   const now2=new Date();
   const today=now2.toISOString().split('T')[0];
   const timeStr=String(now2.getHours()).padStart(2,'0')+':'+String(now2.getMinutes()).padStart(2,'0');
-  const history=[...(m.history||[]),{date:today,time:timeStr,id:Date.now()}];
+  const history=[...(m.history||[]),{date:today,time:timeStr,teacher:teacher,cat:cat,id:Date.now()}];
   await db.collection('members').doc(m.id).update({remaining:m.remaining-1,history});
   const r=m.remaining-1;
   // payRecords에 기록
