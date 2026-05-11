@@ -494,10 +494,10 @@ tr:hover td{background:#fafaf9}
     <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
   </div>
   <div class="filter-row" id="filter-row">
-    <button class="filt-btn active" data-filter="all" onclick="setFilter('all')" id="filt-all">전체 수강생</button>
-    <button class="filt-btn" data-filter="4" onclick="setFilter('4')" id="filt-4">4 Tickets</button>
-    <button class="filt-btn" data-filter="8" onclick="setFilter('8')" id="filt-8">8 Tickets</button>
-    <button class="filt-btn" data-filter="expired" onclick="setFilter('expired')" id="filt-exp">만료·소진</button>
+    <button class="filt-btn active" data-filter="all" onclick="window.setFilter('all')" id="filt-all">전체 수강생</button>
+    <button class="filt-btn" data-filter="4" onclick="window.setFilter('4')" id="filt-4">4 Tickets</button>
+    <button class="filt-btn" data-filter="8" onclick="window.setFilter('8')" id="filt-8">8 Tickets</button>
+    <button class="filt-btn" data-filter="expired" onclick="window.setFilter('expired')" id="filt-exp">만료·소진</button>
   </div>
   <div class="stats-toggle" onclick="toggleStats()">
     <span class="stats-toggle-label">현황 요약</span>
