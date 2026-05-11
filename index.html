@@ -625,7 +625,7 @@ const AV=['av0','av1','av2','av3','av4'];
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();},(err)=>{setSyncStatus('err');console.error(err);});,(err)=>{setSyncStatus('err');console.error(err);});
+onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
