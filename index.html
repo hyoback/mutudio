@@ -753,7 +753,16 @@ window.doDeduct=async(memberId,teacher,cat)=>{
   await updateDoc(doc(db,'members',memberId),{remaining:m.remaining-1,history});
   toast(`${m.name}님 수강 처리 완료 (잔여 ${m.remaining-1}회)`);
 };;
-window.undoDeduct=async(id)=>{const m=members.find(x=>x.id===id);if(!m||m.remaining>=(m.passType||4))return;setSyncStatus('saving');await updateDoc(doc(db,'members',id),{remaining:m.remaining+1});toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);};
+window.undoDeduct=async(id)=>{
+  const m=members.find(x=>x.id===id);
+  if(!m||m.remaining>=(m.passType||4))return;
+  // 마지막 수강이력 제거
+  const history=[...(m.history||[])];
+  if(history.length>0) history.pop(); // 가장 최근 이력 삭제
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',id),{remaining:m.remaining+1,history});
+  toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);
+};
 window.saveMemo=async(id,val)=>{await updateDoc(doc(db,'members',id),{memo:val});};
 window.addHistory=async(id,dateVal)=>{if(!dateVal){toast('날짜를 선택해 주세요.');return;}const m=members.find(x=>x.id===id);if(!m)return;const history=[...(m.history||[]),{date:dateVal,id:Date.now()}];history.sort((a,b)=>a.date.localeCompare(b.date));setSyncStatus('saving');await updateDoc(doc(db,'members',id),{history});toast('수강 이력 추가됨');};
 window.deleteHistory=async(memberId,histId)=>{const m=members.find(x=>x.id===memberId);if(!m)return;const history=(m.history||[]).filter(h=>h.id!==histId);setSyncStatus('saving');await updateDoc(doc(db,'members',memberId),{history});};
