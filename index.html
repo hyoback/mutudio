@@ -404,22 +404,16 @@ tr:hover td{background:#fafaf9}
         <div class="chip-row" id="class-chips" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
         <div id="temp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
       </div>
-      <div class="pay-sec">
-        <div class="pay-lbl">Ticket</div>
-        <div class="chip-row" id="ticket-chips">
-          <div class="chip" data-ticket="1 Ticket" data-on="orange" onclick="selTicket(this)">1 Ticket</div>
-          <div class="chip" data-ticket="4 Tickets" data-on="green" onclick="selTicket(this)">4 Tickets</div>
-          <div class="chip" data-ticket="8 Tickets" data-on="kpop" onclick="selTicket(this)">8 Tickets</div>
-          <div class="chip" data-ticket="1 Basic" data-on="orange" onclick="selTicket(this)">1 Basic</div>
-          <div class="chip" data-ticket="월등록/PRO" data-on="purple" onclick="selTicket(this)">월등록/PRO</div>
-          <div class="chip" data-ticket="etc." data-on="blue" onclick="selTicket(this)">etc.</div>
-        </div>
-      </div>
+
       <div class="pay-sec">
         <div class="pay-lbl">결제 금액 <span style="font-size:11px;color:#aaa;font-weight:400">— 누르면 합산</span></div>
         <div class="amt-box">
           <span id="amt-display" class="amt-empty">금액 버튼을 눌러 합산하거나 직접 입력하세요</span>
           <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #f0f0ee;margin-bottom:2px">
+          <span style="font-size:11px;color:#aaa">전문반 수강생</span>
+          <div id="pro-chip" onclick="togglePro()" class="chip" style="border-radius:20px">전문반</div>
         </div>
         <div class="amt-chips">
           <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
@@ -1068,7 +1062,7 @@ function loadPay(){
   else{payTeachers=[...new Set(ALL_TEACHERS_DEFAULT)];localStorage.setItem(TEACHER_KEY,JSON.stringify(payTeachers));}
   // 결제기록은 Firebase에서 실시간 수신
   payColRef.orderBy('createdAt','desc').onSnapshot(function(snap){
-    payRecords=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    payRecords=snap.docs.map(function(d){return Object.assign({id:d.id,firebaseId:d.id},d.data());});
     updatePayStats();
     populateStatMonths();
     // 현재 탭이 일별/월별이면 재렌더
@@ -1123,6 +1117,7 @@ function onDateChange(){
   tempClasses=[];
   renderTempChips();
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.color='#666';pc.style.borderColor='#e0e0da';}
   renderClassChips();
   updateDowLabel(fDate);
   updateDateDow(fDate);
@@ -1281,7 +1276,7 @@ function addPayRecord(){
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
   if(!name){alert('수강생 이름을 입력해주세요');return;}
-  if(!fTicket){alert('Ticket을 선택해주세요');return;}
+  // Ticket 선택 없이도 등록 가능
   if(fAmt<=0){alert('결제 금액을 입력해주세요');return;}
   if(!fPay){alert('결제 방법을 선택해주세요');return;}
   const now=new Date();
@@ -1300,6 +1295,7 @@ function clearPayForm(){
   document.getElementById('f-amt-custom').value='';
   fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.color='#666';pc.style.borderColor='#e0e0da';}
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   ['card','transfer','cash'].forEach(k=>document.getElementById('pb-'+k).className='chip');
   updateAmtDisplay();renderClassChips();
@@ -1350,15 +1346,16 @@ function buildPayTable(data){
       <td style="font-weight:500">${fmtW(r.amt)}</td>
       <td>${payBadge(r.pay)}</td>
       <td style="color:#aaa;font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
-      <td style="white-space:nowrap"><button class="del-pay-btn" onclick="openEditPay(${r.id})" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord(${r.id})">삭제</button></td>
+      <td style="white-space:nowrap"><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
 
 function delPayRecord(id){
   if(!confirm('삭제할까요?'))return;
-  deletePayFromFirebase(String(id)); // Firebase 삭제
-  payRecords=payRecords.filter(r=>r.id!==id);
+  const rec=payRecords.find(r=>r.id===id||r.id===String(id));
+  if(rec) deletePayFromFirebase(rec.firebaseId||rec.id||String(id));
+  payRecords=payRecords.filter(r=>r.id!==id&&r.id!==String(id));
   savePay();updatePayStats();
   if(curPayTab==='daily') renderDaily();
   if(curPayTab==='monthly') renderMonthly();
@@ -1678,7 +1675,7 @@ function pickAc(name){
 
 // ── 결제 수정 ──
 function openEditPay(id){
-  const r=payRecords.find(x=>x.id===id);
+  const r=payRecords.find(x=>x.id===id||x.id===String(id));
   if(!r) return;
   document.getElementById('ep-id').value=id;
   document.getElementById('ep-name').value=r.name||'';
@@ -1708,9 +1705,11 @@ async function saveEditPay(){
   };
   // Firebase 업데이트
   try{
-    await dbCompat.collection('payRecords').doc(String(id)).update(updated);
+    const rec=payRecords.find(r=>r.id===id||r.id===String(id));
+    const fbId=rec?.firebaseId||rec?.id||String(id);
+    await dbCompat.collection('payRecords').doc(fbId).update(updated);
   }catch(e){
-    // localStorage 업데이트 (Firebase ID가 숫자인 경우)
+    console.error('수정 오류:',e);
     const idx=payRecords.findIndex(r=>r.id==id);
     if(idx>=0){payRecords[idx]={...payRecords[idx],...updated};savePay();}
   }
@@ -1815,6 +1814,27 @@ async function deductWithoutClass(){
 document.getElementById('deduct-class-modal').addEventListener('click',function(e){
   if(e.target===this){this.classList.remove('show');deductTargetId=null;}
 });
+
+
+// ── 전문반 토글 ──
+function togglePro(){
+  const chip=document.getElementById('pro-chip');
+  if(!chip) return;
+  const isOn=chip.dataset.on==='1';
+  if(isOn){
+    chip.dataset.on='0';
+    chip.style.background='#f5f5f4';
+    chip.style.color='#666';
+    chip.style.borderColor='#e0e0da';
+    fTicket='';
+  } else {
+    chip.dataset.on='1';
+    chip.style.background='#1a1a1a';
+    chip.style.color='#fff';
+    chip.style.borderColor='#1a1a1a';
+    fTicket='전문반';
+  }
+}
 
 function exportCSV(){
   if(!payRecords.length){alert('내보낼 기록이 없습니다');return;}
