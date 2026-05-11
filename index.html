@@ -411,11 +411,10 @@ tr:hover td{background:#fafaf9}
           <span id="amt-display" class="amt-empty">금액 버튼을 눌러 합산하거나 직접 입력하세요</span>
           <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #f0f0ee;margin-bottom:2px">
-          <span style="font-size:11px;color:#aaa">전문반 수강생</span>
-          <div id="pro-chip" onclick="togglePro()" class="chip" style="border-radius:20px">전문반</div>
-        </div>
         <div class="amt-chips">
+          <div id="pro-chip" onclick="togglePro()" class="amt-chip" style="border-color:#e24b4a">
+            <span class="ac-name" style="color:#e24b4a">전문반</span>
+          </div>
           <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
           <div class="amt-chip" onclick="addAmt(110000)"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
           <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
@@ -1117,7 +1116,7 @@ function onDateChange(){
   tempClasses=[];
   renderTempChips();
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
-  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.color='#666';pc.style.borderColor='#e0e0da';}
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.borderColor='#e24b4a';const ns=pc.querySelector('.ac-name');if(ns){ns.style.color='#e24b4a';ns.style.fontWeight='400';}}
   renderClassChips();
   updateDowLabel(fDate);
   updateDateDow(fDate);
@@ -1295,7 +1294,7 @@ function clearPayForm(){
   document.getElementById('f-amt-custom').value='';
   fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
-  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.color='#666';pc.style.borderColor='#e0e0da';}
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.borderColor='#e24b4a';const ns=pc.querySelector('.ac-name');if(ns){ns.style.color='#e24b4a';ns.style.fontWeight='400';}}
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   ['card','transfer','cash'].forEach(k=>document.getElementById('pb-'+k).className='chip');
   updateAmtDisplay();renderClassChips();
@@ -1821,17 +1820,18 @@ function togglePro(){
   const chip=document.getElementById('pro-chip');
   if(!chip) return;
   const isOn=chip.dataset.on==='1';
+  const nameSpan=chip.querySelector('.ac-name');
   if(isOn){
     chip.dataset.on='0';
     chip.style.background='#f5f5f4';
-    chip.style.color='#666';
-    chip.style.borderColor='#e0e0da';
+    chip.style.borderColor='#e24b4a';
+    if(nameSpan){nameSpan.style.color='#e24b4a';}
     fTicket='';
   } else {
     chip.dataset.on='1';
-    chip.style.background='#1a1a1a';
-    chip.style.color='#fff';
-    chip.style.borderColor='#1a1a1a';
+    chip.style.background='#fcebeb';
+    chip.style.borderColor='#e24b4a';
+    if(nameSpan){nameSpan.style.color='#a32d2d';nameSpan.style.fontWeight='600';}
     fTicket='전문반';
   }
 }
