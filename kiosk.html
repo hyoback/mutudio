@@ -263,6 +263,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const payColRef = db.collection('payRecords');
+const tempColRef = db.collection('tempClasses');
 
 
 const TIMETABLE={
@@ -280,6 +281,30 @@ let pendingMember=null;
 let pendingClass=null;
 
 let input='', timerInt=null;
+let kioskTempClasses=[];
+
+async function loadKioskTempClasses(){
+  const today=new Date().toISOString().split('T')[0];
+  try{
+    const snap=await tempColRef.where('date','==',today).get();
+    kioskTempClasses=[];
+    snap.forEach(doc=>{
+      const d=doc.data();
+      kioskTempClasses.push({t:d.t,cat:d.cat,time:d.time});
+    });
+  }catch(e){console.error('임시수업 로드 오류:',e);}
+}
+// 로드 시 실행
+loadKioskTempClasses();
+// 실시간 업데이트
+const today0=new Date().toISOString().split('T')[0];
+tempColRef.where('date','==',today0).onSnapshot(snap=>{
+  kioskTempClasses=[];
+  snap.forEach(doc=>{
+    const d=doc.data();
+    kioskTempClasses.push({t:d.t,cat:d.cat,time:d.time});
+  });
+});
 
 function daysLeft(p){
   const now=new Date();now.setHours(0,0,0,0);
@@ -337,7 +362,10 @@ async function submit(){
 
 function showClassSelect(m){
   const dow=new Date().getDay();
-  const classes=TIMETABLE[dow]||[];
+  const baseClasses=TIMETABLE[dow]||[];
+  // 임시 수업 추가 (중복 제거)
+  const tempExtra=kioskTempClasses.filter(tc=>!baseClasses.some(c=>c.t===tc.t&&c.time===tc.time));
+  const classes=[...baseClasses,...tempExtra];
   document.getElementById('cs-name').textContent=m.name+'님, 어느 수업에 참여하시나요?';
   const wrap=document.getElementById('cs-classes');
   wrap.innerHTML='';
