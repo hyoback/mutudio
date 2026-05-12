@@ -362,7 +362,7 @@ tr:hover td{background:#fafaf9}
 
 <!-- ══ 결제 관리 페이지 ══ -->
 <div class="page active" id="page-pay">
-<div class="container">
+<div class="container" style="max-width:600px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
     <div class="title">일반 결제 관리</div>
     <button class="icon-btn" onclick="exportCSV()">CSV 내보내기</button>
@@ -1292,9 +1292,9 @@ function addPayRecord(){
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
   if(!name){alert('수강생 이름을 입력해주세요');return;}
-  // Ticket 선택 없이도 등록 가능
-  if(fAmt<=0){alert('결제 금액을 입력해주세요');return;}
-  if(!fPay){alert('결제 방법을 선택해주세요');return;}
+  const isPro=fTicket==='전문반';
+  if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
+  if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:fTicket,amt:fAmt,pay:fPay,note};
