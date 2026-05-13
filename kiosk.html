@@ -299,10 +299,15 @@ loadKioskTempClasses();
 // 실시간 업데이트
 const today0=new Date().toISOString().split('T')[0];
 tempColRef.where('date','==',today0).onSnapshot(snap=>{
+  const seen=new Set();
   kioskTempClasses=[];
   snap.forEach(doc=>{
     const d=doc.data();
-    kioskTempClasses.push({t:d.t,cat:d.cat,time:d.time});
+    const key=d.t+'|'+d.time;
+    if(!seen.has(key)){
+      seen.add(key);
+      kioskTempClasses.push({t:d.t,cat:d.cat,time:d.time});
+    }
   });
 });
 
@@ -364,7 +369,7 @@ function showClassSelect(m){
   const dow=new Date().getDay();
   const baseClasses=TIMETABLE[dow]||[];
   // 임시 수업 추가 (중복 제거)
-  const tempExtra=kioskTempClasses.filter(tc=>!baseClasses.some(c=>c.t===tc.t&&c.time===tc.time));
+  const tempExtra=kioskTempClasses.filter(tc=>!baseClasses.some(c=>c.t===tc.t));
   const classes=[...baseClasses,...tempExtra];
   document.getElementById('cs-name').textContent=m.name+'님, 어느 수업에 참여하시나요?';
   const wrap=document.getElementById('cs-classes');
