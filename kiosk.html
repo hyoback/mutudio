@@ -111,13 +111,9 @@ html,body{
 .overlay{
   display:none;position:fixed;inset:0;z-index:100;
   align-items:center;justify-content:center;padding:24px;
+  background:rgba(0,0,0,0.45);
 }
 .overlay.show{display:flex}
-.overlay-bg{
-  position:absolute;inset:0;
-  background:rgba(250,250,248,0.75);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-}
 .result-card{
   position:relative;z-index:1;background:#fff;
   border:1px solid #eaeae6;border-radius:28px;
@@ -147,6 +143,10 @@ html,body{
 .r-remain.ok{background:var(--green-pale);color:var(--green)}
 .r-remain.last{background:#fff8e8;color:#b07800}
 .r-remain .num{font-size:clamp(22px,3.5vw,28px);font-weight:700}
+.remain-dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 4px}
+.rdot{width:12px;height:12px;border-radius:50%}
+.rdot.on{background:#204828}
+.rdot.off{background:#e0e0da}
 .r-timer{margin-top:clamp(16px,2.5vh,24px);font-size:12px;color:#ddd;letter-spacing:0.5px}
 .status-bar{
   margin-top:clamp(16px,2.5vh,24px);
@@ -157,8 +157,18 @@ html,body{
 
 .cs-btn{width:100%;padding:12px 16px;background:#fff;border:1px solid #e0e0da;border-radius:12px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:all .15s}
 .cs-btn:hover{background:#f5f5f0;border-color:#bbb}
+.cs-btn.now{background:#eaf4e5;border-color:#204828;border-width:2px}
+.cs-btn.now .cs-now-tag{display:inline-block}
+.cs-now-tag{display:none;font-size:10px;font-weight:700;background:#204828;color:#fff;padding:2px 7px;border-radius:8px;margin-left:6px;letter-spacing:.3px}
+.cs-section-label{font-size:10px;font-weight:700;color:#bbb;letter-spacing:.08em;text-transform:uppercase;padding:6px 2px 4px;margin-top:4px}
 .cs-time{font-size:12px;color:#aaa;font-weight:400}
 .cs-cat{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.member-btn{width:100%;padding:14px 16px;background:#fff;border:1px solid #e0e0da;border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;text-align:left}
+.member-btn:hover{background:#eaf4e5;border-color:#204828}
+.member-avatar{width:36px;height:36px;border-radius:50%;background:#eaf4e5;color:#204828;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.member-info{flex:1;min-width:0}
+.member-name{font-size:14px;font-weight:700;color:#1a1a1a}
+.member-phone{font-size:12px;color:#aaa;margin-top:2px}
 
 .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:none;align-items:center;justify-content:center}
 .confirm-overlay.show{display:flex}
@@ -206,6 +216,7 @@ html,body{
       <button class="key submit" id="submit-btn" onclick="submit()" disabled
         style="grid-column:1/-1;flex-direction:column;gap:3px;height:clamp(70px,10vh,88px)">체크인<span style="font-size:10px;font-weight:400;letter-spacing:2px;opacity:0.7">CHECK-IN</span></button>
     </div>
+    <div id="input-hint" style="font-size:12px;color:#ccc;margin-top:10px;min-height:18px;text-align:center;transition:opacity .2s"></div>
   </div>
 
   <div class="status-bar">
@@ -228,8 +239,17 @@ html,body{
   </div>
 </div>
 
+<!-- 중복 회원 선택 오버레이 -->
+<div class="confirm-overlay" id="member-select-overlay">
+  <div class="confirm-card" style="max-width:380px">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px">같은 번호 회원이 여러 명입니다</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:20px">본인을 선택해 주세요</div>
+    <div id="member-select-list" style="display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:14px"></div>
+    <button onclick="cancelMemberSelect()" style="width:100%;padding:11px;background:#f5f5f0;border:none;border-radius:12px;font-family:inherit;font-size:14px;color:#aaa;cursor:pointer">← 취소</button>
+  </div>
+</div>
+
 <div class="overlay" id="class-overlay" style="display:none">
-  <div class="overlay-bg"></div>
   <div class="result-card" style="max-width:400px;width:90vw">
     <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px" id="cs-name"></div>
     <div style="font-size:13px;color:#888;margin-bottom:20px">오늘 수업을 선택해 주세요</div>
@@ -239,7 +259,6 @@ html,body{
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="overlay-bg"></div>
   <div class="result-card">
     <div class="r-icon" id="r-icon">✓</div>
     <div class="r-name" id="r-name"></div>
@@ -327,7 +346,13 @@ function updateDisplay(){
     else if(i===input.length){b.textContent='-';b.className='digit-box active';}
     else{b.textContent='-';b.className='digit-box';}
   }
-  document.getElementById('submit-btn').disabled=input.length<4;
+  const submitBtn=document.getElementById('submit-btn');
+  const hint=document.getElementById('input-hint');
+  const ready=input.length===4;
+  submitBtn.disabled=!ready;
+  if(hint){
+    hint.textContent=input.length>0&&!ready?(4-input.length)+'자리 더 입력해 주세요':'';
+  }
 }
 
 async function submit(){
@@ -337,57 +362,156 @@ async function submit(){
     const snap=await db.collection('members').get();
     const all=snap.docs.map(d=>({id:d.id,...d.data()}));
     let hit=all.filter(m=>m.phone&&m.phone.replace(/-/g,'').endsWith(digits));
-    if(!hit.length){show('err','등록되지 않은 번호','뒷자리를 다시 확인해 주세요','');return;}
+    if(!hit.length){show('err','등록되지 않은 번호','뒷자리를 다시 확인해 주세요','',5);return;}
     if(hit.length>1){
-      function maskName(name){
-        if(name.length<=1) return name;
-        if(name.length===2) return name[0]+'*';
-        return name[0]+'*'+name[name.length-1];
-      }
-      const options = hit.map((m,i)=>`${i+1}. ${maskName(m.name)}`).join('\n');
-      const choice = prompt(`같은 번호가 여러 명입니다.\n번호를 입력해 주세요:\n\n${options}`);
-      const idx = parseInt(choice)-1;
-      if(isNaN(idx)||idx<0||idx>=hit.length){reset();return;}
-      hit=[hit[idx]];
+      showMemberSelect(hit);
+      return;
     }
-    const m=hit[0], dl=daysLeft(m.payDate);
-    if(dl<=0){show('err',m.name+'님','수강권이 만료되었습니다','수강권 갱신이 필요합니다');return;}
-    if(m.remaining<=0){show('err',m.name+'님','잔여 횟수가 없습니다','수강권 갱신이 필요합니다');return;}
-    // 수업 선택 후 차감 — pendingMember에 멤버 정보 저장
-    const expDate0=new Date(m.payDate);expDate0.setDate(expDate0.getDate()+28);
-    const expStr0=(expDate0.getMonth()+1)+'월 '+expDate0.getDate()+'일';
-    pendingMember={m, expStr:expStr0};
-    showClassSelect(m);
+    proceedWithMember(hit[0]);
   }catch(e){
-    show('err','오류 발생','잠시 후 다시 시도해 주세요','');
+    show('err','오류 발생','잠시 후 다시 시도해 주세요','',5);
     console.error(e);
   }
 }
 
+function showMemberSelect(members){
+  const list=document.getElementById('member-select-list');
+  list.innerHTML='';
+  members.forEach(function(m){
+    const initials=m.name?m.name.slice(0,1):'?';
+    const masked=m.phone?m.phone.replace(/(\d{3})-?(\d{4})-?(\d{4})/,'$1-****-$3'):'';
+    const btn=document.createElement('button');
+    btn.className='member-btn';
+    btn.innerHTML=
+      '<div class="member-avatar">'+initials+'</div>'+
+      '<div class="member-info">'+
+        '<div class="member-name">'+m.name+'</div>'+
+        '<div class="member-phone">'+masked+'</div>'+
+      '</div>';
+    btn.addEventListener('click',function(){
+      cancelMemberSelect();
+      proceedWithMember(m);
+    });
+    list.appendChild(btn);
+  });
+  document.getElementById('member-select-overlay').classList.add('show');
+}
+
+function cancelMemberSelect(){
+  document.getElementById('member-select-overlay').classList.remove('show');
+}
+
+function proceedWithMember(m){
+  const dl=daysLeft(m.payDate);
+  if(dl<=0){show('err',m.name+'님','수강권이 만료되었습니다','수강권 갱신이 필요합니다',5);return;}
+  if(m.remaining<=0){show('err',m.name+'님','잔여 횟수가 없습니다','수강권 갱신이 필요합니다',5);return;}
+  // 오늘 이미 체크인 여부 확인
+  const today=new Date().toISOString().split('T')[0];
+  const todayHistory=(m.history||[]).filter(h=>h.date===today);
+  if(todayHistory.length>0){
+    const lastTeacher=todayHistory[todayHistory.length-1].teacher||'';
+    const lastTime=todayHistory[todayHistory.length-1].time||'';
+    const warnHtml='<div style="background:#fff8e8;border-radius:10px;padding:10px 14px;font-size:12px;color:#b07800;margin-top:4px">'
+      +'오늘 이미 '+lastTeacher+' ('+lastTime+') 수업에 체크인했습니다.<br>다른 수업이면 계속 진행하세요.</div>';
+    // 경고만 하고 계속 진행 (다른 수업일 수 있으므로)
+    document.getElementById('r-icon').className='r-icon';
+    document.getElementById('r-icon').textContent='⚠';
+    document.getElementById('r-icon').style.background='#fff8e8';
+    document.getElementById('r-icon').style.color='#b07800';
+    document.getElementById('r-name').textContent=m.name+'님';
+    document.getElementById('r-name').style.color='#b07800';
+    document.getElementById('r-msg').textContent='오늘 이미 체크인 기록이 있습니다';
+    document.getElementById('r-extra').innerHTML=warnHtml+
+      '<div style="display:flex;gap:8px;margin-top:14px">'+
+        '<button onclick="document.getElementById(\'overlay\').classList.remove(\'show\');clearInterval(timerInt);proceedToClassSelect_pending()" style="flex:1;padding:12px;background:#204828;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">계속 체크인</button>'+
+        '<button onclick="document.getElementById(\'overlay\').classList.remove(\'show\');clearInterval(timerInt);reset()" style="flex:1;padding:12px;background:#f5f5f0;color:#888;border:none;border-radius:10px;font-family:inherit;font-size:14px;cursor:pointer">취소</button>'+
+      '</div>';
+    document.getElementById('r-timer').textContent='';
+    document.getElementById('overlay').classList.add('show');
+    window._pendingMemberForClass=m;
+    return;
+  }
+  const expDate0=new Date(m.payDate);expDate0.setDate(expDate0.getDate()+28);
+  const expStr0=(expDate0.getMonth()+1)+'월 '+expDate0.getDate()+'일';
+  pendingMember={m,expStr:expStr0};
+  showClassSelect(m);
+}
+
+window.proceedToClassSelect_pending=function(){
+  const m=window._pendingMemberForClass;
+  if(!m) return;
+  window._pendingMemberForClass=null;
+  const expDate0=new Date(m.payDate);expDate0.setDate(expDate0.getDate()+28);
+  const expStr0=(expDate0.getMonth()+1)+'월 '+expDate0.getDate()+'일';
+  pendingMember={m,expStr:expStr0};
+  showClassSelect(m);
+};
+
 
 function showClassSelect(m){
   const dow=new Date().getDay();
+  const nowH=new Date().getHours();
+  const nowM=new Date().getMinutes();
+  const nowMins=nowH*60+nowM;
+
   const baseClasses=TIMETABLE[dow]||[];
-  // 임시 수업 추가 (중복 제거)
   const tempExtra=kioskTempClasses.filter(tc=>!baseClasses.some(c=>c.t===tc.t));
-  const classes=[...baseClasses,...tempExtra];
+  const allClasses=[...baseClasses,...tempExtra];
+
+  // 고정 수업 vs 팝업 분리
+  const fixedCats=['정규','비기너','베이직','K-POP'];
+  const fixed=allClasses.filter(c=>fixedCats.includes(c.cat));
+  const popup=allClasses.filter(c=>!fixedCats.includes(c.cat));
+
   document.getElementById('cs-name').textContent=m.name+'님, 어느 수업에 참여하시나요?';
   const wrap=document.getElementById('cs-classes');
   wrap.innerHTML='';
-  classes.forEach(function(c){
+
+  function makeBtn(c){
     const btn=document.createElement('button');
     btn.className='cs-btn';
     const col=CAT_COLOR_K[c.cat]||'#888';
     const lbl=CAT_LABEL_K[c.cat]||c.cat;
-    btn.innerHTML='<span style="font-weight:600">'+c.t+'</span>'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<span class="cs-time">'+c.time+'</span>'
-      +'<span class="cs-cat" style="background:'+col+'20;color:'+col+'">'+lbl+'</span>'
-      +'</div>';
+
+    // 현재 시간 ±40분 범위면 하이라이트
+    let isNow=false;
+    if(c.time){
+      const parts=c.time.split(':');
+      const h=parseInt(parts[0])+(parseInt(parts[0])<12?12:0); // PM 보정
+      const min=parseInt(parts[1]||0);
+      const classMins=h*60+min;
+      if(Math.abs(classMins-nowMins)<=40) isNow=true;
+    }
+    if(isNow) btn.classList.add('now');
+
+    btn.innerHTML=
+      '<span style="font-weight:600;display:flex;align-items:center">'+c.t+
+        '<span class="cs-now-tag">지금</span>'+
+      '</span>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+        '<span class="cs-time">'+c.time+'</span>'+
+        '<span class="cs-cat" style="background:'+col+'20;color:'+col+'">'+lbl+'</span>'+
+      '</div>';
     btn.addEventListener('click',function(){showConfirm(c.t,c.cat,c.time);});
-    wrap.appendChild(btn);
-  });
-  if(!classes.length){
+    return btn;
+  }
+
+  if(fixed.length){
+    const lbl=document.createElement('div');
+    lbl.className='cs-section-label';
+    lbl.textContent='정규 수업';
+    wrap.appendChild(lbl);
+    fixed.forEach(c=>wrap.appendChild(makeBtn(c)));
+  }
+  if(popup.length){
+    const lbl=document.createElement('div');
+    lbl.className='cs-section-label';
+    lbl.textContent='팝업 수업';
+    if(fixed.length) lbl.style.marginTop='8px';
+    wrap.appendChild(lbl);
+    popup.forEach(c=>wrap.appendChild(makeBtn(c)));
+  }
+  if(!allClasses.length){
     wrap.innerHTML='<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">오늘 등록된 수업이 없습니다</div>';
   }
   document.getElementById('class-overlay').style.display='flex';
@@ -439,11 +563,25 @@ async function confirmClassSelect(teacher,cat,time){
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
   };
   payColRef.add(rec).catch(function(e){console.error('결제기록 저장 오류:',e);});
-  const extra=(r>0
-    ?`<div class="r-remain ok"><span class="num">${r}</span>회 남았습니다</div>`
-    :`<div class="r-remain last">오늘이 마지막 수업입니다</div>`)
+  const total=m.remaining; // 차감 전 값 (최대 표시용)
+  const maxDots=Math.min(total,8); // 8회권 기준, 최대 8개 도트
+  let dotsHtml='';
+  if(r>0&&total>0){
+    const dots=[];
+    for(let i=0;i<maxDots;i++){
+      dots.push('<span class="rdot '+(i<r?'on':'off')+'"></span>');
+    }
+    dotsHtml='<div class="remain-dots">'+dots.join('')+'</div>';
+  }
+  const remainBlock=r>0
+    ?`<div class="r-remain ok"><span class="num">${r}</span>회 남았습니다</div>${dotsHtml}`
+    :`<div class="r-remain last" style="flex-direction:column;gap:4px;padding:14px 20px;border-radius:14px;background:#fff8e8;color:#b07800;text-align:center;width:100%">
+        <span style="font-size:15px;font-weight:700">오늘이 마지막 수업입니다</span>
+        <span style="font-size:12px;font-weight:400;opacity:.8">프론트 데스크에서 수강권 갱신을 해주세요</span>
+      </div>`;
+  const extra=remainBlock
     +`<div style="margin-top:14px;background:#f8f8f5;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;color:#555">📅 수강권 만료일 <span style="color:#204828;font-weight:700">${expStr}</span></div>`;
-  show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra);
+  show('ok',m.name+'님, 환영합니다!','출석이 완료되었습니다',extra,3);
 }
 
 function cancelClassSelect(){
@@ -453,7 +591,7 @@ function cancelClassSelect(){
   reset();
 }
 
-function show(type,name,msg,extra){
+function show(type,name,msg,extra,sec){
   const icon=document.getElementById('r-icon');
   const nameEl=document.getElementById('r-name');
   icon.className='r-icon '+(type==='ok'?'ok':'err');
@@ -461,9 +599,9 @@ function show(type,name,msg,extra){
   nameEl.className='r-name '+(type==='ok'?'ok':'err');
   nameEl.textContent=name;
   document.getElementById('r-msg').textContent=msg;
-  document.getElementById('r-extra').innerHTML=extra;
+  document.getElementById('r-extra').innerHTML=extra||'';
   document.getElementById('overlay').classList.add('show');
-  let c=3;
+  let c=sec||3;
   if(timerInt) clearInterval(timerInt);
   document.getElementById('r-timer').textContent=c+'초 후 자동으로 닫힙니다';
   timerInt=setInterval(()=>{
