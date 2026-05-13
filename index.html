@@ -361,8 +361,8 @@ tr:hover td{background:#fafaf9}
 </div>
 
 <!-- ══ 결제 관리 페이지 ══ -->
-<div class="page active" id="page-pay">
-<div class="container" style="max-width:600px">
+<div class="page active" id="page-pay" style="display:flex;justify-content:center">
+<div style="width:100%;max-width:620px;padding:24px 16px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
     <div class="title">일반 결제 관리</div>
     <button class="icon-btn" onclick="exportCSV()">CSV 내보내기</button>
@@ -371,13 +371,11 @@ tr:hover td{background:#fafaf9}
     <div class="pay-stat"><div class="pay-stat-lbl">오늘 건수</div><div class="pay-stat-val" id="ps-cnt">0</div></div>
     <div class="pay-stat"><div class="pay-stat-lbl">오늘 카드 / 이체 / 현금</div><div class="pay-stat-val" id="ps-pay" style="font-size:14px">0 / 0 / 0</div></div>
   </div>
-  </div>
   <div class="pay-nav">
     <button class="pay-nav-btn on" onclick="switchPayTab('input',this)">결제 입력</button>
     <button class="pay-nav-btn" onclick="switchPayTab('daily',this)">일별 보기</button>
     <button class="pay-nav-btn" onclick="switchPayTab('monthly',this)">월별 보기</button>
     <button class="pay-nav-btn" onclick="switchPayTab('stats',this)">강사 통계</button>
-    
   </div>
 
   <!-- 결제 입력 -->
@@ -964,7 +962,7 @@ const TEACHER_KEY='mutudio_teachers_v2';
 
 // 시간표 데이터 (날짜별 → {teacher, cat, time})
 // cat: regular=정규, basic=베이직, popup=팝업, beginner=비기너, kpop=K-POP
-const TIMETABLE = {
+window.TIMETABLE = {
   0:[// 일
     {t:'SYA',        cat:'K-POP',  time:'4:30'},
     {t:'LEEKO',      cat:'비기너', time:'4:50'},
@@ -1090,7 +1088,7 @@ function saveTeachersData(){try{localStorage.setItem(TEACHER_KEY,JSON.stringify(
 function fmtN(n){return Math.round(n).toLocaleString('ko-KR');}
 function fmtW(n){return '\u20A9'+fmtN(n);}
 
-function init(){
+async function init(){
   loadPay();
   const today=new Date().toISOString().split('T')[0];
   fDate=today;
@@ -1103,20 +1101,19 @@ function init(){
   updateDateDow(today);
   populateStatMonths();
   // Firebase에서 오늘 임시 수업 불러오기
-  loadTempClassesFromFirebase(today);
+  await loadTempClassesFromFirebase(today);
 }
 
-async function loadTempClassesFromFirebase(today){
-  try{
-    const snap=await dbCompat.collection('tempClasses').where('date','==',today).get();
+function loadTempClassesFromFirebase(today){
+  // onSnapshot으로 실시간 감지 (새로고침해도 유지)
+  dbCompat.collection('tempClasses').where('date','==',today).onSnapshot(snap=>{
+    tempClasses=[];
     snap.forEach(doc=>{
       const d=doc.data();
-      // 중복 방지
-      const exists=tempClasses.some(c=>c.t===d.t&&c.time===d.time);
-      if(!exists) tempClasses.push({t:d.t,cat:d.cat,time:d.time,date:d.date});
+      tempClasses.push({t:d.t,cat:d.cat,time:d.time,date:d.date});
     });
-    if(tempClasses.length) renderTempChips();
-  }catch(e){console.error('임시수업 불러오기 오류:',e);}
+    renderTempChips();
+  },err=>console.error('임시수업 오류:',err));
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', init);
@@ -1782,7 +1779,8 @@ function openDeductClassModal(m){
   document.getElementById('dc-title').textContent=m.name+'님 수업 선택';
   document.getElementById('dc-sub').textContent='오늘 수강한 수업을 선택해 주세요';
   const dow=new Date().getDay();
-  const classes=TIMETABLE[dow]||[];
+  const TT=window.TIMETABLE||{};
+  const classes=TT[dow]||[];
   const CAT_COLOR_M={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
   const CAT_LABEL_M={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
   const list=document.getElementById('dc-list');
