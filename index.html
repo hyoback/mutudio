@@ -409,10 +409,8 @@ tr:hover td{background:#fafaf9}
           <span id="amt-display" class="amt-empty">금액 버튼을 눌러 합산하거나 직접 입력하세요</span>
           <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
         </div>
-        <div class="amt-chips">
-          <div id="pro-chip" onclick="togglePro()" class="amt-chip" style="border-color:#e24b4a">
-            <span class="ac-name" style="color:#e24b4a">전문반</span>
-          </div>
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div class="amt-chips" style="flex:1">
           <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
           <div class="amt-chip" onclick="addAmt(110000)"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
           <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
@@ -420,6 +418,11 @@ tr:hover td{background:#fafaf9}
           <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
           <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
           <div class="amt-chip" onclick="addAmt(1000)"><span class="ac-name">물</span><span class="ac-val">+1,000</span></div>
+          </div>
+          <div id="pro-chip" onclick="togglePro()" class="amt-chip" style="border-color:#e24b4a;flex-shrink:0">
+            <span class="ac-name" style="color:#e24b4a">전문반</span>
+            <span class="ac-val" id="pro-chip-val">&nbsp;</span>
+          </div>
         </div>
         <div style="display:flex;gap:8px">
           <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
@@ -1839,7 +1842,7 @@ function togglePro(){
     chip.dataset.on='0';
     chip.style.background='#f5f5f4';
     chip.style.borderColor='#e24b4a';
-    if(nameSpan){nameSpan.style.color='#e24b4a';}
+    if(nameSpan){nameSpan.style.color='#e24b4a';nameSpan.style.fontWeight='';}
     fTicket='';
   } else {
     chip.dataset.on='1';
