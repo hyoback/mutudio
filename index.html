@@ -361,8 +361,8 @@ tr:hover td{background:#fafaf9}
 </div>
 
 <!-- ══ 결제 관리 페이지 ══ -->
-<div class="page active" id="page-pay" style="display:flex;justify-content:center">
-<div style="width:100%;max-width:620px;padding:24px 16px">
+<div class="page active" id="page-pay">
+<div style="max-width:900px;margin:0 auto;padding:24px 16px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
     <div class="title">일반 결제 관리</div>
     <button class="icon-btn" onclick="exportCSV()">CSV 내보내기</button>
@@ -503,7 +503,7 @@ tr:hover td{background:#fafaf9}
 </div>
 
 <!-- ══ 다회권 관리 페이지 ══ -->
-<div class="page" id="page-pass">
+<div class="page" id="page-pass" style="display:none">
 <!-- 당일 차감 위젯 -->
 <div class="today-widget hidden-widget" id="today-widget">
   <div class="today-widget-hd">
@@ -673,14 +673,14 @@ const payColRef=dbCompat.collection('payRecords');
 <script>
 function switchMainTab(id){
   document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&id==='pay')||(i===1&&id==='pass')));
-  document.getElementById('page-pay').classList.toggle('active',id==='pay');
-  document.getElementById('page-pass').classList.toggle('active',id==='pass');
+  // display 직접 제어 (active 클래스 의존 X)
+  document.getElementById('page-pay').style.display=(id==='pay')?'block':'none';
+  document.getElementById('page-pass').style.display=(id==='pass')?'block':'none';
   if(id==='pay') updatePayStats();
   if(id==='pass'){
-    // 위젯 즉시 표시
     const w=document.getElementById('today-widget');
     if(w) w.classList.remove('hidden-widget');
-    setTimeout(renderTodayWidget, 50);
+    setTimeout(renderTodayWidget,50);
   } else {
     const w=document.getElementById('today-widget');
     if(w) w.classList.add('hidden-widget');
