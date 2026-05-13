@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .sync-err{background:#fcebeb;color:#a32d2d}
 .main-tabs{display:flex;background:#fff;border-bottom:1px solid #e8e8e4;padding:0 24px;position:sticky;top:56px;z-index:40}
 .main-tab{padding:14px 20px;font-size:14px;font-weight:500;color:#aaa;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;font-family:inherit}
-.main-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+.main-tab.active{color:#204828;border-bottom-color:#204828;font-weight:600}
 .container{max-width:720px;margin:0 auto;padding:24px 16px}
 #page-pay .container{max-width:600px}
 .page{display:none}.page.active{display:block}
@@ -37,7 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .title{font-size:20px;font-weight:600;letter-spacing:-0.4px}
 .subtitle{font-size:13px;color:#888;margin-top:2px}
-.add-btn{background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.add-btn{background:#204828;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
 .add-btn:hover{opacity:0.8}
 .search-wrap{position:relative;margin-bottom:14px}
 .search-input{width:100%;padding:10px 14px 10px 38px;border:1px solid #e0e0da;border-radius:10px;font-size:14px;background:#fff;color:#1a1a1a;outline:none}
@@ -83,8 +83,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .sessions{display:flex;gap:7px;flex-wrap:wrap}
 .dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
 .dot-used{background:#fff;border:1px solid #ddd;color:#bbb}.dot-ok{background:#e1f5ee;color:#0f6e56}.dot-urg{background:#faeeda;color:#854f0b}
-.pbar{height:4px;background:#e8e8e4;border-radius:2px;margin-top:10px;overflow:hidden}
-.pfill{height:100%;border-radius:2px}
+.pro-toggle-btn{padding:7px 14px;font-size:12px;font-family:inherit;background:#f5f5f4;border:1.5px solid #e24b4a;border-radius:8px;color:#e24b4a;cursor:pointer;font-weight:500;user-select:none;transition:.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.pro-toggle-btn:hover{background:#fcebeb}
+.pro-toggle-btn.on{background:#fcebeb;color:#a32d2d;font-weight:600;border-color:#a32d2d}
+.pro-label{font-size:12px;font-weight:inherit;color:inherit}
+.pbar{height:5px;background:#e8e8e4;border-radius:3px;margin-top:10px;overflow:hidden}
+.pfill{height:100%;border-radius:3px;transition:width .3s}
 .elapsed{font-size:10px;color:#bbb;margin-top:5px}
 .card-actions{display:flex;gap:6px;margin-bottom:12px}
 .deduct-btn{flex:1;padding:9px 10px;border:1px solid #e0e0da;border-radius:8px;background:transparent;font-size:13px;font-weight:500;cursor:pointer;transition:background 0.15s}
@@ -143,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .modal-btns{display:flex;gap:8px;margin-top:18px}
 .modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer}
 .btn-cancel{background:transparent;border:1px solid #e0e0da;color:#888}
-.btn-save{background:#1a1a1a;color:#fff;border:none}
+.btn-save{background:#204828;color:#fff;border:none}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 
@@ -155,11 +159,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .pay-stat{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:14px 16px}
 .pay-stat-lbl{font-size:11px;color:#888;margin-bottom:4px}
 .pay-stat-val{font-size:18px;font-weight:500}
+@keyframes statFlash{0%{color:#1a1a1a}30%{color:#204828;transform:scale(1.15)}100%{color:#1a1a1a;transform:scale(1)}}
+.stat-flash{animation:statFlash .6s ease-out}
 .pay-panel{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:1rem}
-.pay-panel-hd{font-size:11px;font-weight:500;color:#888;letter-spacing:.06em;text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid #f0f0ee}
+.pay-panel-hd{font-size:13px;font-weight:600;color:#555;letter-spacing:.03em;text-transform:uppercase;padding-bottom:12px;border-bottom:1px solid #f0f0ee;margin-bottom:4px}
 .pay-sec{display:flex;flex-direction:column;gap:5px}
 .pay-lbl{font-size:12px;color:#555;font-weight:500}
-.pay-two{display:grid;grid-template-columns:1fr;gap:10px}
+.pay-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pay-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.pay-form-col{display:flex;flex-direction:column;gap:1rem}
+@media(max-width:640px){.pay-form-grid{grid-template-columns:1fr}.pay-two{grid-template-columns:1fr}}
 .pay-input{width:100%;font-family:inherit;font-size:13px;color:#1a1a1a;background:#f9f9f8;border:1px solid #e5e5e3;border-radius:8px;padding:8px 11px;outline:none}
 .pay-input:focus{border-color:#aaa;background:#fff}
 .pay-textarea{width:100%;font-family:inherit;font-size:12px;color:#1a1a1a;background:#f9f9f8;border:1px solid #e5e5e3;border-radius:8px;padding:8px 11px;outline:none;resize:vertical;min-height:48px}
@@ -202,8 +211,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .amt-chip:hover{background:#ebebeb;border-color:#bbb}
 .amt-chip .ac-name{font-size:10px;color:#888}
 .amt-chip .ac-val{font-size:13px;font-weight:500;color:#1a1a1a}
-.pay-submit{width:100%;padding:11px;font-size:14px;font-weight:500;font-family:inherit;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer}
-.pay-submit:hover{opacity:.85}
+.pay-submit{width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;background:#204828;color:#fff;border:none;border-radius:8px;cursor:pointer;letter-spacing:0.01em;transition:opacity .15s}
+.pay-submit:hover{opacity:.88}
 .tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid #e5e5e3}
 table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 th{font-size:11px;font-weight:500;color:#888;text-align:left;padding:7px 9px;border-bottom:1px solid #e5e5e3;background:#f9f9f8;white-space:nowrap}
@@ -266,33 +275,32 @@ tr:hover td{background:#fafaf9}
 .detail-table td{padding:6px 8px;border-bottom:1px solid #f5f5f4;vertical-align:middle}
 .detail-table tr:last-child td{border-bottom:none}
 
-/* ── 당일 차감 위젯 ── */
+/* ── 당일 차감 위젯 (인라인 접이식) ── */
 .today-widget{
-  position:fixed;right:20px;top:120px;
-  width:240px;
   background:#fff;border:1px solid #e5e5e3;
-  border-radius:14px;
-  box-shadow:0 4px 20px rgba(0,0,0,0.08);
-  z-index:30;
+  border-radius:12px;
   overflow:hidden;
-  transition:all .2s;
+  margin-bottom:16px;
 }
 .today-widget-hd{
-  padding:10px 14px 8px;
+  padding:12px 16px;
   border-bottom:1px solid #f0f0ee;
   display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;
 }
-.today-widget-title{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;text-transform:uppercase}
-.today-widget-count{font-size:18px;font-weight:700;color:#1a1a1a}
-.today-widget-body{max-height:calc(100vh - 220px);overflow-y:auto;padding:8px 0}
-.tw-item{padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f4}
+.today-widget-hd:hover{background:#fafaf9}
+.today-widget-title{font-size:12px;font-weight:600;color:#555;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.today-widget-count{font-size:20px;font-weight:700;color:#204828}
+.today-widget-body{padding:8px 0;max-height:220px;overflow-y:auto}
+.today-widget.collapsed .today-widget-body{display:none}
+.tw-item{padding:7px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f4}
 .tw-item:last-child{border-bottom:none}
 .tw-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;background:#e1f5ee;color:#0f6e56}
 .tw-info{flex:1;min-width:0}
 .tw-name{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tw-detail{font-size:10px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tw-time{font-size:10px;color:#bbb;flex-shrink:0}
-.tw-empty{padding:20px 14px;text-align:center;font-size:12px;color:#bbb}
+.tw-empty{padding:16px;text-align:center;font-size:12px;color:#bbb}
 .today-widget.hidden-widget{display:none}
 
 /* 수정 모달 */
@@ -349,7 +357,7 @@ tr:hover td{background:#fafaf9}
 
 <div class="topbar">
   <div class="topbar-left">
-    <span class="logo">mu:tudio academy</span>
+    <span class="logo"><span style="color:#204828;font-style:italic">mu:tudio</span> academy</span>
     <span class="sync-status sync-ok" id="sync-status">● 연결됨</span>
   </div>
   <span style="font-size:12px;color:#aaa" id="last-sync"></span>
@@ -382,66 +390,78 @@ tr:hover td{background:#fafaf9}
   <div id="ptab-input">
     <div class="pay-panel">
       <div class="pay-panel-hd">새 결제 등록</div>
-      <div class="pay-two">
-        <div class="pay-sec"><div class="pay-lbl">수강생 이름</div>
-      <div class="autocomplete-wrap">
-        <input type="text" id="f-name" class="pay-input" placeholder="이름 입력" autocomplete="off"
-          oninput="showAcList(this.value)" onblur="setTimeout(()=>hideAcList(),200)">
-        <div class="autocomplete-list" id="ac-list"></div>
-      </div>
-    </div>
-        <div class="pay-sec"><div class="pay-lbl">날짜</div><div style="position:relative"><input type="date" id="f-date" class="pay-input" onchange="onDateChange()" oninput="onDateChange()" style="padding-right:52px"><span id="f-date-dow" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;pointer-events:none"></span></div></div>
-      </div>
-      <div class="pay-sec">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="pay-lbl">Class <span id="teacher-dow-label" style="font-size:11px;color:#aaa;font-weight:400"></span></div>
-          <div style="display:flex;gap:6px">
-            <button onclick="openAddClassModal()" class="add-class-btn">＋ 수업 추가</button>
-            <button onclick="toggleAllTeachers()" id="toggle-teacher-btn" style="font-size:11px;padding:3px 9px;font-family:inherit;background:#f5f5f4;border:1px solid #e0e0da;border-radius:6px;color:#666;cursor:pointer">전체 보기</button>
+      <div class="pay-form-grid">
+        <!-- 왼쪽 컬럼: 이름 / 날짜 / Class -->
+        <div class="pay-form-col">
+          <div class="pay-sec"><div class="pay-lbl">수강생 이름</div>
+            <div class="autocomplete-wrap">
+              <input type="text" id="f-name" class="pay-input" placeholder="이름 입력" autocomplete="off"
+                oninput="showAcList(this.value)" onblur="setTimeout(()=>hideAcList(),200)">
+              <div class="autocomplete-list" id="ac-list"></div>
+            </div>
+          </div>
+          <div class="pay-sec"><div class="pay-lbl">날짜</div>
+            <div style="position:relative">
+              <input type="date" id="f-date" class="pay-input" onchange="onDateChange()" oninput="onDateChange()" style="padding-right:52px">
+              <span id="f-date-dow" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;pointer-events:none"></span>
+            </div>
+          </div>
+          <div class="pay-sec">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="pay-lbl">Class <span id="teacher-dow-label" style="font-size:11px;color:#aaa;font-weight:400"></span></div>
+              <div style="display:flex;gap:6px">
+                <button onclick="openAddClassModal()" class="add-class-btn">＋ 수업 추가</button>
+                <button onclick="toggleAllTeachers()" id="toggle-teacher-btn" class="add-class-btn">전체 보기</button>
+              </div>
+            </div>
+            <div class="chip-row" id="class-chips" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
           </div>
         </div>
-        <div class="chip-row" id="class-chips" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
-      </div>
 
-      <div class="pay-sec">
-        <div class="pay-lbl">결제 금액 <span style="font-size:11px;color:#aaa;font-weight:400">— 누르면 합산</span></div>
-        <div class="amt-box">
-          <span id="amt-display" class="amt-empty">금액 버튼을 눌러 합산하거나 직접 입력하세요</span>
-          <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:16px">
-          <div class="amt-chips" style="flex:1">
-          <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
-          <div class="amt-chip" onclick="addAmt(110000)"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
-          <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
-          <div class="amt-chip" onclick="addAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
-          <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
-          <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
-          <div class="amt-chip" onclick="addAmt(1000)"><span class="ac-name">물</span><span class="ac-val">+1,000</span></div>
+        <!-- 오른쪽 컬럼: 금액 / 결제방법+전문반 / 비고 / 등록버튼 -->
+        <div class="pay-form-col">
+          <div class="pay-sec">
+            <div class="pay-lbl">결제 금액 <span style="font-size:11px;color:#aaa;font-weight:400">— 누르면 합산</span></div>
+            <div class="amt-box">
+              <span id="amt-display" class="amt-empty">금액을 선택하거나 입력하세요</span>
+              <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
+            </div>
+            <div class="amt-chips">
+              <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
+              <div class="amt-chip" onclick="addAmt(110000)"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
+              <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
+              <div class="amt-chip" onclick="addAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
+              <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
+              <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
+              <div class="amt-chip" onclick="addAmt(1000)"><span class="ac-name">물</span><span class="ac-val">+1,000</span></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
+              <button onclick="applyCustomAmt()" class="add-class-btn" style="padding:8px 13px;font-size:12px">+ 추가</button>
+            </div>
           </div>
-          <div id="pro-chip" onclick="togglePro()" class="amt-chip" style="border-color:#e24b4a;flex-shrink:0">
-            <span class="ac-name" style="color:#e24b4a">전문반</span>
-            <span class="ac-val" id="pro-chip-val">&nbsp;</span>
+
+          <div class="pay-sec">
+            <div class="pay-lbl">결제 방법</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="chip-row" style="flex:1">
+                <div class="chip" id="pb-card" onclick="selPay('카드','card')">카드</div>
+                <div class="chip" id="pb-transfer" onclick="selPay('이체','transfer')">이체</div>
+                <div class="chip" id="pb-cash" onclick="selPay('현금','cash')">현금</div>
+              </div>
+              <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0">
+                <span class="pro-label">전문반</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
-          <button onclick="applyCustomAmt()" style="padding:8px 13px;font-size:12px;font-family:inherit;background:#f5f5f4;border:1px solid #e0e0da;border-radius:8px;color:#555;cursor:pointer">+ 추가</button>
-        </div>
-      </div>
-      <div class="pay-sec">
-        <div class="pay-lbl">결제 방법</div>
-        <div class="chip-row">
-          <div class="chip" id="pb-card" onclick="selPay('카드','card')">카드</div>
-          <div class="chip" id="pb-transfer" onclick="selPay('이체','transfer')">이체</div>
-          <div class="chip" id="pb-cash" onclick="selPay('현금','cash')">현금</div>
+
+          <div class="pay-sec">
+            <div class="pay-lbl">비고</div>
+            <textarea id="f-note" class="pay-textarea" placeholder="특이사항 메모 (선택)"></textarea>
+          </div>
+          <button class="pay-submit" onclick="addPayRecord()">결제 등록</button>
         </div>
       </div>
-      <div class="pay-sec">
-        <div class="pay-lbl">비고</div>
-        <textarea id="f-note" class="pay-textarea" placeholder="특이사항 메모 (선택)"></textarea>
-      </div>
-      <button class="pay-submit" onclick="addPayRecord()">결제 등록</button>
     </div>
   </div>
 
@@ -507,18 +527,18 @@ tr:hover td{background:#fafaf9}
 
 <!-- ══ 다회권 관리 페이지 ══ -->
 <div class="page" id="page-pass" style="display:none">
-<!-- 당일 차감 위젯 -->
-<div class="today-widget hidden-widget" id="today-widget">
-  <div class="today-widget-hd">
-    <span class="today-widget-title">오늘 차감 내역</span>
-    <span class="today-widget-count" id="tw-count">0</span>
-  </div>
-  <div class="today-widget-body" id="tw-body">
-    <div class="tw-empty">오늘 수강 내역 없음</div>
-  </div>
-</div>
 
 <div class="container">
+  <!-- 당일 차감 위젯 (인라인 접이식) -->
+  <div class="today-widget hidden-widget" id="today-widget">
+    <div class="today-widget-hd" onclick="this.closest('.today-widget').classList.toggle('collapsed')">
+      <span class="today-widget-title">오늘 차감 내역</span>
+      <span class="today-widget-count" id="tw-count">0</span>
+    </div>
+    <div class="today-widget-body" id="tw-body">
+      <div class="tw-empty">오늘 수강 내역 없음</div>
+    </div>
+  </div>
   <div class="header">
     <div>
       <div class="title">다회권 관리</div>
@@ -739,6 +759,9 @@ window.deduct=(id)=>{
 window.doDeduct=async(memberId,teacher,cat)=>{
   const m=members.find(x=>x.id===memberId);
   if(!m)return;
+  // 차감 버튼 로딩 상태
+  const btn=document.querySelector(`.deduct-btn[onclick*="${memberId}"]`);
+  if(btn){btn.disabled=true;btn.textContent='처리 중...';}
   const now=new Date();
   const today=now.toISOString().split('T')[0];
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
@@ -845,7 +868,7 @@ function renderTodayWidget(){
 
   // 다회권 관리 탭에서만 표시
   const passPage=document.getElementById('page-pass');
-  const isPassActive=passPage&&passPage.classList.contains('active');
+  const isPassActive=passPage&&passPage.style.display!=='none';
   if(!isPassActive){
     widget.classList.add('hidden-widget');
     return;
@@ -1131,7 +1154,7 @@ function onDateChange(){
   tempClasses=[];
   renderTempChips();
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
-  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.borderColor='#e24b4a';const ns=pc.querySelector('.ac-name');if(ns){ns.style.color='#e24b4a';ns.style.fontWeight='400';}}
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
   renderClassChips();
   updateDowLabel(fDate);
   updateDateDow(fDate);
@@ -1303,6 +1326,9 @@ function addPayRecord(){
   clearPayForm();
   const t=document.getElementById('toast');
   t.textContent=name+'님 결제 등록 완료!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
+  // 오늘 건수 카드 하이라이트
+  const cntEl=document.getElementById('ps-cnt');
+  if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
 }
 
 function clearPayForm(){
@@ -1311,7 +1337,7 @@ function clearPayForm(){
   document.getElementById('f-amt-custom').value='';
   fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
-  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.style.background='#f5f5f4';pc.style.borderColor='#e24b4a';const ns=pc.querySelector('.ac-name');if(ns){ns.style.color='#e24b4a';ns.style.fontWeight='400';}}
+  const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   ['card','transfer','cash'].forEach(k=>document.getElementById('pb-'+k).className='chip');
   updateAmtDisplay();renderClassChips();
@@ -1350,7 +1376,7 @@ function buildPayTable(data){
       <th style="width:74px">날짜</th><th style="width:42px">시간</th><th style="width:60px">이름</th>
       <th style="width:70px">Class</th><th style="width:52px">분류</th>
       <th style="width:68px">Ticket</th><th style="width:82px">금액</th>
-      <th style="width:50px">결제</th><th>비고</th><th style="width:34px"></th>
+      <th style="width:50px">결제</th><th style="width:60px">비고</th><th style="width:70px"></th>
     </tr></thead>
     <tbody>${data.map(r=>`<tr>
       <td style="color:#888">${r.date}</td>
@@ -1361,7 +1387,7 @@ function buildPayTable(data){
       <td>${ticketBadge(r.ticket)}</td>
       <td style="font-weight:500">${fmtW(r.amt)}</td>
       <td>${payBadge(r.pay)}</td>
-      <td style="color:#aaa;font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
+      <td style="color:#aaa;font-size:11px;width:60px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
       <td style="white-space:nowrap"><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -1744,7 +1770,6 @@ function renderDailyClosing(recs, date){
   const tf=recs.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
   const cash=recs.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
   const cnt=recs.length;
-  // 분류별
   const cats=['정규','팝업','비기너','베이직','K-POP','워크샵'];
   const catRows=cats.map(c=>{
     const cr=recs.filter(r=>r.cat===c);
@@ -1754,6 +1779,22 @@ function renderDailyClosing(recs, date){
       <span class="closing-val">${cr.length}건 · ${fmtW(cr.reduce((s,r)=>s+r.amt,0))}</span>
     </div>`;
   }).filter(Boolean).join('');
+  // 결제수단 비율바
+  const cardPct=total>0?Math.round(card/total*100):0;
+  const tfPct=total>0?Math.round(tf/total*100):0;
+  const cashPct=total>0?100-cardPct-tfPct:0;
+  const ratioBar=total>0?`<div style="margin-top:12px">
+    <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px">
+      ${card>0?`<div style="width:${cardPct}%;background:#854f0b;border-radius:4px 0 0 4px"></div>`:''}
+      ${tf>0?`<div style="width:${tfPct}%;background:#4527a0"></div>`:''}
+      ${cash>0?`<div style="width:${cashPct}%;background:#0f6e56;border-radius:0 4px 4px 0"></div>`:''}
+    </div>
+    <div style="display:flex;gap:12px;margin-top:6px">
+      ${card>0?`<span style="font-size:11px;color:#854f0b">카드 ${cardPct}%</span>`:''}
+      ${tf>0?`<span style="font-size:11px;color:#4527a0">이체 ${tfPct}%</span>`:''}
+      ${cash>0?`<span style="font-size:11px;color:#0f6e56">현금 ${cashPct}%</span>`:''}
+    </div>
+  </div>`:'';
   wrap.innerHTML=`<div class="closing-wrap">
     <div class="closing-title">📋 ${date} 마감 요약</div>
     ${catRows}
@@ -1770,6 +1811,7 @@ function renderDailyClosing(recs, date){
       <div class="cm-box"><div class="cm-label">이체</div><div class="cm-val">${fmtW(tf)}</div></div>
       <div class="cm-box"><div class="cm-label">현금</div><div class="cm-val">${fmtW(cash)}</div></div>
     </div>
+    ${ratioBar}
   </div>`;
 }
 
@@ -1837,18 +1879,13 @@ function togglePro(){
   const chip=document.getElementById('pro-chip');
   if(!chip) return;
   const isOn=chip.dataset.on==='1';
-  const nameSpan=chip.querySelector('.ac-name');
   if(isOn){
     chip.dataset.on='0';
-    chip.style.background='#f5f5f4';
-    chip.style.borderColor='#e24b4a';
-    if(nameSpan){nameSpan.style.color='#e24b4a';nameSpan.style.fontWeight='';}
+    chip.classList.remove('on');
     fTicket='';
   } else {
     chip.dataset.on='1';
-    chip.style.background='#fcebeb';
-    chip.style.borderColor='#e24b4a';
-    if(nameSpan){nameSpan.style.color='#a32d2d';nameSpan.style.fontWeight='600';}
+    chip.classList.add('on');
     fTicket='전문반';
   }
 }
