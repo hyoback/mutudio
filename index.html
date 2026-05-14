@@ -433,7 +433,10 @@ tr:hover td{background:#fafaf9}
               <div class="amt-chip" onclick="addAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
               <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
               <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
-              <div class="amt-chip" onclick="addAmt(1000)"><span class="ac-name">물</span><span class="ac-val">+1,000</span></div>
+              <div class="amt-chip" onclick="addAmt(1000)" style="border-color:#5aaadc" title="이름 없이도 바로 등록 가능"><span class="ac-name" style="color:#2176ae">물 💧</span><span class="ac-val" style="color:#2176ae">+1,000</span></div>
+              <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0">
+                <span class="pro-label">전문반</span>
+              </div>
             </div>
             <div style="display:flex;gap:8px">
               <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
@@ -448,9 +451,6 @@ tr:hover td{background:#fafaf9}
                 <div class="chip" id="pb-card" onclick="selPay('카드','card')">카드</div>
                 <div class="chip" id="pb-transfer" onclick="selPay('이체','transfer')">이체</div>
                 <div class="chip" id="pb-cash" onclick="selPay('현금','cash')">현금</div>
-              </div>
-              <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0">
-                <span class="pro-label">전문반</span>
               </div>
             </div>
           </div>
@@ -1296,27 +1296,34 @@ function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom
 function resetAmt(){fAmt=0;updateAmtDisplay();document.getElementById('f-amt-custom').value='';}
 function updateAmtDisplay(){
   const d=document.getElementById('amt-display'),rb=document.getElementById('amt-reset-btn');
+  d.style.color='';d.style.fontWeight='';
   if(fAmt>0){d.textContent=fmtW(fAmt);d.className='amt-main';rb.style.display='block';}
-  else{d.textContent='금액 버튼을 눌러 합산하거나 직접 입력하세요';d.className='amt-empty';rb.style.display='none';}
+  else{d.textContent='금액을 선택하거나 입력하세요';d.className='amt-empty';rb.style.display='none';}
 }
 
 function addPayRecord(){
-  const name=document.getElementById('f-name').value.trim();
+  const nameInput=document.getElementById('f-name').value.trim();
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
-  if(!name){alert('수강생 이름을 입력해주세요');return;}
   const isPro=fTicket==='전문반';
+
+  // 물 단독 결제 여부 (1,000원만 선택, 이름 없어도 허용)
+  const isWaterOnly=fAmt===1000&&!nameInput;
+  const name=isWaterOnly?'물':nameInput;
+
+  if(!name){alert('수강생 이름을 입력해주세요');return;}
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
-  if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
+  if(!isPro&&!isWaterOnly&&!fPay){alert('결제 방법을 선택해주세요');return;}
+
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:fTicket,amt:fAmt,pay:fPay,note};
-  savePayToFirebase(rec);  // Firebase 저장 (onSnapshot이 자동으로 payRecords 갱신)
-  savePay(); // localStorage 백업
+  savePayToFirebase(rec);
+  savePay();
   clearPayForm();
   const t=document.getElementById('toast');
-  t.textContent=name+'님 결제 등록 완료!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
-  // 오늘 건수 카드 하이라이트
+  t.textContent=isWaterOnly?'물 결제 완료! 💧':(name+'님 결제 등록 완료!');
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
   const cntEl=document.getElementById('ps-cnt');
   if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
 }
@@ -1873,10 +1880,21 @@ function togglePro(){
     chip.dataset.on='0';
     chip.classList.remove('on');
     fTicket='';
+    // 전문반 수강 표시 제거
+    updateAmtDisplay();
   } else {
     chip.dataset.on='1';
     chip.classList.add('on');
     fTicket='전문반';
+    // 금액란에 전문반 수강 표시
+    const disp=document.getElementById('amt-display');
+    if(disp){
+      disp.className='';
+      disp.textContent='전문반 수강';
+      disp.style.color='#a32d2d';
+      disp.style.fontWeight='600';
+    }
+    document.getElementById('amt-reset-btn').style.display='none';
   }
 }
 
