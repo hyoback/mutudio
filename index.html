@@ -960,7 +960,13 @@ window.undoDeduct=async(id)=>{
   const total=m.passType==='basic'?(m.basicWeeks||3):(m.passType||4);
   if(m.remaining>=total)return;
   const history=[...(m.history||[])];
-  if(history.length>0) history.pop();
+  if(history.length>0){
+    // 가장 최근 항목을 id로 찾아 삭제 (단순 pop 대신 안전하게)
+    const lastId=history[history.length-1].id;
+    const idx=history.findLastIndex(h=>h.id===lastId);
+    if(idx>=0) history.splice(idx,1);
+    else history.pop(); // fallback
+  }
   setSyncStatus('saving');
   await updateDoc(doc(db,'members',id),{remaining:m.remaining+1,history});
   toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);
@@ -1250,7 +1256,7 @@ function renderTodayWidget(){
     const memoEsc=(m.memo||'').replace(/"/g,'&quot;'),canUndo=m.remaining<totalSlots,history=m.history||[];
     const histItems=history.length===0?`<div class="history-empty">수강 이력 없음</div>`:`<div class="history-list">${history.slice().reverse().map(h=>`<div class="history-item">
   <span class="history-date">${h.date.replace(/-/g,'.')}${h.time?' <span style="color:#aaa;font-size:11px">'+h.time+'</span>':''}</span>
-  ${h.teacher?`<span style="font-size:11px;color:#555;font-weight:500">${h.teacher}${h.cat?' · <span style="color:#aaa">'+{'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'}[h.cat]||h.cat+'</span>':''}</span>`:''}
+  ${h.teacher?`<span style="font-size:11px;color:#555;font-weight:500">${h.teacher}${h.cat?' · <span style="color:#aaa">'+({'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'}[h.cat]||h.cat)+'</span>':''}</span>`:'<span style="font-size:11px;color:#ccc">수업 정보 없음</span>'}
   <button class="history-del" onclick="deleteHistory('${m.id}',${h.id})">✕</button>
 </div>`).join('')}</div>`;
     return `<div class="member-card ${cardCls}${isHL?' hl':''}" data-id="${m.id}">
@@ -1799,6 +1805,7 @@ function addPayRecord(){
 async function deductMemberAndRecord(m,date,note){
   if(m.remaining<=0){alert(`${m.name}님은 잔여 횟수가 없습니다.`);return;}
   if(daysLeft(m.payDate)<=0){alert(`${m.name}님의 수강권이 만료되었습니다.`);return;}
+  if(!fTeacher){alert('수업(강사)을 먼저 선택해 주세요.');return;}
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const history=[...(m.history||[]),{date,time:timeStr,teacher:fTeacher,cat:fCat,id:Date.now()}];
