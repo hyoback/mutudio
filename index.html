@@ -846,11 +846,15 @@ const payColRef=dbCompat.collection('payRecords');
 <!-- ══ 메인 탭 전환 ══ -->
 <script>
 function switchMainTab(id){
+  // 탭 전환 시 열린 모달 모두 닫기
+  document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('show'));
+  document.querySelectorAll('.edit-pay-modal').forEach(m=>m.classList.remove('show'));
+  document.querySelectorAll('.deduct-class-modal').forEach(m=>m.classList.remove('show'));
   document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&id==='pay')||(i===1&&id==='pass')));
   document.getElementById('page-pay').style.display=(id==='pay')?'block':'none';
   document.getElementById('page-pass').style.display=(id==='pass')?'block':'none';
   if(id==='pay') updatePayStats();
-  renderTodayWidget(); // 탭 전환 시 항상 즉시 렌더링 (표시 여부는 함수 내부에서 판단)
+  renderTodayWidget();
 }
 </script>
 
@@ -1676,6 +1680,12 @@ function addPayRecord(){
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
   if(!isPro&&!isWaterOnly&&!fPay){alert('결제 방법을 선택해주세요');return;}
 
+  // 다회권/PRO 등록 필요한데 전화번호 없으면 저장 전에 막기
+  if(fPassType&&name){
+    const phone=document.getElementById('f-pass-phone').value.trim();
+    if(!phone){alert('전화번호를 입력해 주세요.');return;}
+  }
+
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:fTicket,amt:fAmt,pay:fPay,note};
@@ -1685,7 +1695,6 @@ function addPayRecord(){
   // 다회권 / PRO 자동 등록
   if(fPassType&&name){
     const phone=document.getElementById('f-pass-phone').value.trim();
-    if(!phone){alert('전화번호를 입력해 주세요.');return;}
     const isProPass=fPassType==='pro';
     const passData={
       name,phone,payDate:date,
