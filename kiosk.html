@@ -615,6 +615,9 @@ function show(type,name,msg,extra,sec){
 
 function reset(){
   document.getElementById('overlay').classList.remove('show');
+  document.getElementById('class-overlay').style.display='none';
+  clearInterval(timerInt);
+  window._pendingMemberForClass=null;
   input='';updateDisplay();
 }
 
