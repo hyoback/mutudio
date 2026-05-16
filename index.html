@@ -1702,7 +1702,7 @@ function addPayRecord(){
       if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
     }
     setSyncStatus('saving');
-    addDoc(collection(db,'members'),passData).then(()=>{
+    dbCompat.collection('members').add(passData).then(()=>{
       toast(`${name}님 ${isProPass?'PRO':'다회권'} 등록 완료!`);
     }).catch(e=>{toast('등록 중 오류: '+e.message);});
   }
