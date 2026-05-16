@@ -260,13 +260,14 @@ html,body{
   </div>
 </div>
 
-<div class="overlay" id="overlay">
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
   <div class="result-card">
     <div class="r-icon" id="r-icon">✓</div>
     <div class="r-name" id="r-name"></div>
     <div class="r-msg" id="r-msg"></div>
     <div id="r-extra"></div>
     <div class="r-timer" id="r-timer"></div>
+    <div style="margin-top:8px;font-size:11px;color:#ddd;letter-spacing:0.3px">화면을 누르면 즉시 닫힙니다</div>
   </div>
 </div>
 
@@ -411,10 +412,13 @@ function proceedWithMember(m){
   const today=new Date().toISOString().split('T')[0];
   const todayHistory=(m.history||[]).filter(h=>h.date===today);
   if(todayHistory.length>0){
-    const lastTeacher=todayHistory[todayHistory.length-1].teacher||'';
-    const lastTime=todayHistory[todayHistory.length-1].time||'';
+    const last=todayHistory[todayHistory.length-1];
+    const lastTeacher=last.teacher||'';
+    const lastCatMap={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'};
+    const lastCat=last.cat?lastCatMap[last.cat]||last.cat:'';
+    const lastInfo=[lastTeacher,lastCat].filter(Boolean).join(' · ');
     const warnHtml='<div style="background:#fff8e8;border-radius:10px;padding:10px 14px;font-size:12px;color:#b07800;margin-top:4px">'
-      +'오늘 이미 '+lastTeacher+' ('+lastTime+') 수업에 체크인했습니다.<br>다른 수업이면 계속 진행하세요.</div>';
+      +'오늘 이미 '+lastInfo+' 수업에 체크인했습니다.<br>다른 수업이면 계속 진행하세요.</div>';
     // 경고만 하고 계속 진행 (다른 수업일 수 있으므로)
     document.getElementById('r-icon').className='r-icon';
     document.getElementById('r-icon').textContent='⚠';
@@ -460,10 +464,19 @@ function showClassSelect(m){
   const tempExtra=kioskTempClasses.filter(tc=>!baseClasses.some(c=>c.t===tc.t));
   const allClasses=[...baseClasses,...tempExtra];
 
-  // 고정 수업 vs 팝업 분리
+  // 시간 기준 정렬 헬퍼 (1~11시 → PM 변환)
+  function classMinutes(c){
+    if(!c.time) return 9999;
+    const parts=c.time.split(':');
+    const rawH=parseInt(parts[0]);
+    const h=(rawH>=1&&rawH<12)?rawH+12:rawH;
+    return h*60+parseInt(parts[1]||0);
+  }
+
+  // 고정 수업 vs 팝업 분리 후 시간순 정렬
   const fixedCats=['정규','비기너','베이직','K-POP'];
-  const fixed=allClasses.filter(c=>fixedCats.includes(c.cat));
-  const popup=allClasses.filter(c=>!fixedCats.includes(c.cat));
+  const fixed=allClasses.filter(c=>fixedCats.includes(c.cat)).sort((a,b)=>classMinutes(a)-classMinutes(b));
+  const popup=allClasses.filter(c=>!fixedCats.includes(c.cat)).sort((a,b)=>classMinutes(a)-classMinutes(b));
 
   document.getElementById('cs-name').textContent=m.name+'님, 어느 수업에 참여하시나요?';
   const wrap=document.getElementById('cs-classes');
@@ -479,7 +492,9 @@ function showClassSelect(m){
     let isNow=false;
     if(c.time){
       const parts=c.time.split(':');
-      const h=parseInt(parts[0])+(parseInt(parts[0])<12?12:0); // PM 보정
+      const rawH=parseInt(parts[0]);
+      // 타임테이블은 1~11시 표기가 전부 오후 → PM 변환 (12는 그대로)
+      const h=(rawH>=1&&rawH<12)?rawH+12:rawH;
       const min=parseInt(parts[1]||0);
       const classMins=h*60+min;
       if(Math.abs(classMins-nowMins)<=40) isNow=true;
@@ -524,7 +539,14 @@ function showConfirm(teacher,cat,time){
   pendingClass={teacher,cat,time};
   const CAT_LABEL_KR={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'};
   const lbl=CAT_LABEL_KR[cat]||cat;
-  const timeLabel=time?time+'PM ':' ';
+  let timeLabel=' ';
+  if(time){
+    const tp=time.split(':');
+    const th=parseInt(tp[0]);
+    // 타임테이블 시간이 1~11이면 PM, 12 이상이면 그대로
+    const isPM=th>=1&&th<12;
+    timeLabel=time+(isPM?' PM ':' ');
+  }
   document.getElementById('confirm-msg').textContent=
     teacher+' · '+timeLabel+lbl+' 수업';
   document.getElementById('confirm-overlay').classList.add('show');
@@ -611,6 +633,13 @@ function show(type,name,msg,extra,sec){
     if(c<=0){clearInterval(timerInt);reset();}
     else document.getElementById('r-timer').textContent=c+'초 후 자동으로 닫힙니다';
   },1000);
+}
+
+function handleOverlayClick(e){
+  // result-card 내부 버튼 클릭은 무시, 배경 또는 카드 자체 클릭 시 닫기
+  if(e.target.closest('button')) return;
+  clearInterval(timerInt);
+  reset();
 }
 
 function reset(){
