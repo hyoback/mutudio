@@ -126,7 +126,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .pass-btn{flex:1;padding:10px;border-radius:8px;border:1px solid #e0e0da;background:#fff;font-size:14px;font-weight:500;color:#888;cursor:pointer;transition:all 0.15s}
 .pass-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 .pass-type-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
-.pt4{background:#e6f1fb;color:#185fa5}.pt8{background:#eeedfe;color:#534ab7}
+.pt4{background:#e6f1fb;color:#185fa5}.pt8{background:#eeedfe;color:#534ab7}.pt-basic{background:#eaf4e5;color:#204828}
+.basic-extra{display:none;flex-direction:column;gap:8px;margin-top:10px;padding:12px;background:#f8f8f5;border-radius:10px;border:1px solid #e8e8e4}
+.basic-extra.show{display:flex}
+.basic-week-row{display:flex;gap:6px}
+.basic-week-btn{flex:1;padding:7px;border:1.5px solid #e0e0da;border-radius:8px;background:#fff;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;color:#666;text-align:center}
+.basic-week-btn.active{border-color:#204828;background:#eaf4e5;color:#204828;font-weight:700}
+.basic-teacher-row{display:flex;gap:6px;flex-wrap:wrap}
+.basic-teacher-btn{flex:1;min-width:80px;padding:7px 6px;border:1.5px solid #e0e0da;border-radius:8px;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666;text-align:center;white-space:nowrap}
+.basic-teacher-btn.active{border-color:#204828;background:#eaf4e5;color:#204828;font-weight:700}
 .edit-btn{padding:8px 10px;border:1px solid #e0e0da;border-radius:8px;background:transparent;font-size:12px;color:#666;cursor:pointer}
 .renew-btn{padding:8px 10px;border:1px solid #1d9e75;border-radius:8px;background:#e1f5ee;font-size:12px;color:#0f6e56;cursor:pointer;font-weight:500}
 .renew-btn:hover{background:#c8edd8}
@@ -155,7 +163,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .pay-nav{display:flex;gap:4px;background:#ebebeb;border-radius:12px;padding:4px;margin-bottom:16px}
 .pay-nav-btn{flex:1;padding:7px 0;font-size:12px;font-weight:500;font-family:inherit;border:none;border-radius:8px;background:transparent;color:#888;cursor:pointer;transition:.12s}
 .pay-nav-btn.on{background:#fff;color:#1a1a1a;border:1px solid #e5e5e3;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.pay-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.pay-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+@media(max-width:700px){.pay-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pay-stat{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:14px 16px}
 .pay-stat-lbl{font-size:11px;color:#888;margin-bottom:4px}
 .pay-stat-val{font-size:18px;font-weight:500}
@@ -207,7 +216,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .amt-main{font-size:22px;font-weight:500;color:#1a1a1a}
 .amt-empty{font-size:13px;color:#bbb}
 .amt-chips{display:flex;flex-wrap:wrap;gap:6px}
-.amt-chip{padding:7px 12px;font-size:12px;font-family:inherit;background:#f5f5f4;border:1px solid #e0e0da;border-radius:8px;color:#555;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:.12s;white-space:nowrap}
+.amt-chip{padding:8px 10px;font-size:12px;font-family:inherit;background:#f5f5f4;border:1px solid #e0e0da;border-radius:8px;color:#555;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.12s;white-space:nowrap;width:100%}
 .amt-chip:hover{background:#ebebeb;border-color:#bbb}
 .amt-chip .ac-name{font-size:10px;color:#888}
 .amt-chip .ac-val{font-size:13px;font-weight:500;color:#1a1a1a}
@@ -375,9 +384,27 @@ tr:hover td{background:#fafaf9}
     <div class="title">일반 결제 관리</div>
     <button class="icon-btn" onclick="exportCSV()">CSV 내보내기</button>
   </div>
-  <div class="pay-stats" style="grid-template-columns:1fr 1fr">
-    <div class="pay-stat"><div class="pay-stat-lbl">오늘 건수</div><div class="pay-stat-val" id="ps-cnt">0</div></div>
-    <div class="pay-stat"><div class="pay-stat-lbl">오늘 카드 / 이체 / 현금</div><div class="pay-stat-val" id="ps-pay" style="font-size:14px">0 / 0 / 0</div></div>
+  <div class="pay-stats" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="pay-stat">
+      <div class="pay-stat-lbl">일반 결제</div>
+      <div class="pay-stat-val" id="ps-pay-cnt">0</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px" id="ps-pay-method">카드 0 · 이체 0 · 현금 0</div>
+    </div>
+    <div class="pay-stat">
+      <div class="pay-stat-lbl">기존 티켓 차감</div>
+      <div class="pay-stat-val" id="ps-deduct-cnt" style="color:#204828">0</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px" id="ps-deduct-sub">오늘 차감 없음</div>
+    </div>
+    <div class="pay-stat">
+      <div class="pay-stat-lbl">물 💧</div>
+      <div class="pay-stat-val" id="ps-water-cnt" style="color:#2176ae">0</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px" id="ps-water-amt">0원</div>
+    </div>
+    <div class="pay-stat">
+      <div class="pay-stat-lbl">오늘 총 매출</div>
+      <div class="pay-stat-val" id="ps-cnt" style="font-size:15px">0원</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px" id="ps-total-cnt">0건</div>
+    </div>
   </div>
   <div class="pay-nav">
     <button class="pay-nav-btn on" onclick="switchPayTab('input',this)">결제 입력</button>
@@ -426,20 +453,43 @@ tr:hover td{background:#fafaf9}
               <span id="amt-display" class="amt-empty">금액을 선택하거나 입력하세요</span>
               <button id="amt-reset-btn" onclick="resetAmt()" style="display:none;font-size:11px;padding:4px 10px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">초기화</button>
             </div>
-            <div class="amt-chips">
-              <div class="amt-chip" onclick="addAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
-              <div class="amt-chip" onclick="addAmt(110000)"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
-              <div class="amt-chip" onclick="addAmt(200000)"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
-              <div class="amt-chip" onclick="addAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
-              <div class="amt-chip" onclick="selectBasicMonthly(this)"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
-              <div class="amt-chip" onclick="addAmt(700000)"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
-              <div class="amt-chip" onclick="addAmt(1000)" style="border-color:#5aaadc" title="이름 없이도 바로 등록 가능"><span class="ac-name" style="color:#2176ae">물 💧</span><span class="ac-val" style="color:#2176ae">+1,000</span></div>
-              <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+              <div class="amt-chip" onclick="addAmtNoPass(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
+              <div class="amt-chip" onclick="selectTicket(this,4,110000)" id="chip-4t"><span class="ac-name">4 Tickets</span><span class="ac-val">+110,000</span></div>
+              <div class="amt-chip" onclick="selectTicket(this,8,200000)" id="chip-8t"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
+              <div class="amt-chip" onclick="addAmtNoPass(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
+              <div class="amt-chip" onclick="selectBasicMonthlyPass(this)" id="chip-basic" style="grid-column:span 2"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
+              <div class="amt-chip" onclick="addAmt(700000);selectTicket(this,'pro',0)" id="chip-pro"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
+              <div class="amt-chip" onclick="addWater()" style="border-color:#5aaadc"><span class="ac-name" style="color:#2176ae">물 💧</span><span class="ac-val" style="color:#2176ae">+1,000</span></div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0" style="flex:1;justify-content:center">
                 <span class="pro-label">전문반</span>
               </div>
-              <button onclick="openQuickDeduct()" class="pro-toggle-btn" style="border-color:#204828;color:#204828" title="다회권 즉시 차감">
-                🎫 차감
+              <button id="deduct-chip" onclick="toggleDeduct()" class="pro-toggle-btn" data-on="0" style="border-color:#204828;color:#204828;flex:1;justify-content:center">
+                🎫 티켓 차감
               </button>
+            </div>
+
+            <!-- 다회권 등록 필드 (4T/8T/Basic/PRO 선택 시 표시) -->
+            <div id="pass-reg-wrap" style="display:none;margin-top:10px;padding:12px;background:#f0f8f2;border-radius:10px;border:1px solid #a8d5b0">
+              <div id="pass-reg-label" style="font-size:12px;font-weight:600;color:#204828;margin-bottom:8px">📋 다회권 등록</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="tel" id="f-pass-phone" class="pay-input" placeholder="전화번호 (010-0000-0000)" style="flex:1;min-width:160px" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)">
+                <div id="pass-basic-extra" style="display:none;flex:1;min-width:140px">
+                  <select id="f-pass-basic-teacher" class="pay-input" style="width:100%">
+                    <option value="">강사 선택</option>
+                    <option>WANNA</option><option>EVE</option><option>YENI CHO</option><option>HYOS</option>
+                  </select>
+                </div>
+                <div id="pass-week-extra" style="display:none;flex:1;min-width:120px">
+                  <select id="f-pass-basic-weeks" class="pay-input" style="width:100%">
+                    <option value="3">3주 (3회)</option>
+                    <option value="4">4주 (4회)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="font-size:11px;color:#6aab84;margin-top:6px" class="pass-reg-hint">결제 등록 시 다회권도 자동 생성됩니다</div>
             </div>
             <div style="display:flex;gap:8px">
               <input type="number" id="f-amt-custom" class="pay-input" placeholder="직접 입력 후 추가 (원)" style="flex:1" onkeydown="if(event.key==='Enter')applyCustomAmt()">
@@ -558,6 +608,7 @@ tr:hover td{background:#fafaf9}
     <button class="filt-btn active" data-filter="all" onclick="window.setFilter('all')" id="filt-all">전체 수강생</button>
     <button class="filt-btn" data-filter="4" onclick="window.setFilter('4')" id="filt-4">4 Tickets</button>
     <button class="filt-btn" data-filter="8" onclick="window.setFilter('8')" id="filt-8">8 Tickets</button>
+    <button class="filt-btn" data-filter="basic" onclick="window.setFilter('basic')" id="filt-basic">Basic Monthly</button>
     <button class="filt-btn" data-filter="expired" onclick="window.setFilter('expired')" id="filt-exp">만료·소진</button>
   </div>
   <div class="stats-toggle" onclick="toggleStats()">
@@ -576,7 +627,31 @@ tr:hover td{background:#fafaf9}
     <div class="modal-title">신규 회원 등록</div>
     <div class="field"><label>이름</label><div class="name-row"><input id="inp-name" placeholder="예: 명삼일" /><input id="inp-name-en" placeholder="ex: samil" style="flex:1.2" /></div></div>
     <div class="field"><label>연락처</label><input id="inp-phone" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)" /></div>
-    <div class="field"><label>수강권 종류</label><div class="pass-select"><button class="pass-btn active" data-val="4" onclick="selectPass(this,4)">4 Tickets</button><button class="pass-btn" data-val="8" onclick="selectPass(this,8)">8 Tickets</button></div></div>
+    <div class="field"><label>수강권 종류</label>
+      <div class="pass-select">
+        <button class="pass-btn active" data-val="4" onclick="selectPass(this,4)">4 Tickets</button>
+        <button class="pass-btn" data-val="8" onclick="selectPass(this,8)">8 Tickets</button>
+        <button class="pass-btn" data-val="basic" onclick="selectPass(this,'basic')">Basic Monthly</button>
+      </div>
+      <div class="basic-extra" id="inp-basic-extra">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Teacher</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="inp-teacher-btns">
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','WANNA')">WANNA</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','EVE')">EVE</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','YENI CHO')">YENI CHO</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','HYOS')">HYOS</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;margin-top:4px">Weeks</div>
+          <div class="basic-week-row">
+            <button class="basic-week-btn active" data-week="3" onclick="selectWeek(this,3)">3 weeks (3 sessions)</button>
+            <button class="basic-week-btn" data-week="4" onclick="selectWeek(this,4)">4 weeks (4 sessions)</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="field"><label>결제일</label><input id="inp-date" type="date" /></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">취소</button><button class="btn-save" onclick="saveNew()">등록</button></div>
   </div>
@@ -589,7 +664,33 @@ tr:hover td{background:#fafaf9}
     <input type="hidden" id="edit-id" />
     <div class="field"><label>이름</label><div class="name-row"><input id="edit-name" /><input id="edit-name-en" style="flex:1.2" /></div></div>
     <div class="field"><label>연락처</label><input id="edit-phone" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)" /></div>
-    <div class="field"><label>수강권 종류</label><div class="pass-select"><button id="edit-pass-4" class="pass-btn edit-pass-btn active" onclick="selectEditPass(this,4)">4 Tickets</button><button id="edit-pass-8" class="pass-btn edit-pass-btn" onclick="selectEditPass(this,8)">8 Tickets</button></div></div>
+    <div class="field"><label>수강권 종류</label>
+      <div class="pass-select">
+        <button id="edit-pass-4" class="pass-btn edit-pass-btn active" onclick="selectEditPass(this,4)">4 Tickets</button>
+        <button id="edit-pass-8" class="pass-btn edit-pass-btn" onclick="selectEditPass(this,8)">8 Tickets</button>
+        <button id="edit-pass-basic" class="pass-btn edit-pass-btn" onclick="selectEditPass(this,'basic')">Basic Monthly</button>
+      </div>
+      <div class="basic-extra" id="edit-basic-extra">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Teacher</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="edit-teacher-btns">
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','WANNA')">WANNA</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','EVE')">EVE</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','YENI CHO')">YENI CHO</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','HYOS')">HYOS</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;margin-top:4px">Weeks</div>
+          <div class="basic-week-row">
+            <button class="basic-week-btn active" id="edit-week-3" data-week="3" onclick="selectEditWeek(this,3)">3 weeks (3 sessions)</button>
+            <button class="basic-week-btn" id="edit-week-4" data-week="4" onclick="selectEditWeek(this,4)">4 weeks (4 sessions)</button>
+          </div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
     <div class="field"><label>결제일</label><input id="edit-date" type="date" /></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeEdit()">취소</button><button class="btn-save" onclick="saveEdit()">저장</button></div>
   </div>
@@ -668,7 +769,7 @@ tr:hover td{background:#fafaf9}
 
 <!-- 🎫 빠른 차감 모달 -->
 <div class="edit-pay-modal" id="quick-deduct-modal">
-  <div class="modal" style="width:400px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="width:400px;max-height:90vh;overflow-y:visible">
     <div class="modal-title">🎫 다회권 차감</div>
 
     <!-- STEP 1: 이름 검색 -->
@@ -677,7 +778,7 @@ tr:hover td{background:#fafaf9}
         <label>수강생 이름 검색</label>
         <input id="qd-name" type="text" placeholder="이름 입력..." autocomplete="off"
           oninput="qdSearch(this.value)" onblur="setTimeout(qdHideList,200)">
-        <div id="qd-list" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0da;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:200;max-height:200px;overflow-y:auto;display:none"></div>
+        <div id="qd-list" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0da;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.13);z-index:9999;max-height:220px;overflow-y:auto;display:none"></div>
       </div>
       <div id="qd-search-hint" style="font-size:12px;color:#bbb;margin-top:-8px;margin-bottom:8px">이름을 입력하면 다회권 등록 회원이 표시됩니다</div>
     </div>
@@ -688,17 +789,17 @@ tr:hover td{background:#fafaf9}
         <!-- JS로 채워짐 -->
       </div>
       <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px">차감할 수업</div>
-      <div style="display:flex;gap:8px;margin-bottom:6px">
-        <input id="qd-teacher" type="text" placeholder="강사명 (선택)" class="pay-input" style="flex:1">
-        <select id="qd-cat" class="pay-input" style="flex:1">
-          <option value="">분류 선택</option>
-          <option value="정규">REGULAR</option>
-          <option value="팝업">POP-UP</option>
-          <option value="비기너">BEGINNER</option>
-          <option value="베이직">BASIC</option>
-          <option value="K-POP">K-POP</option>
-          <option value="워크샵">WORKSHOP</option>
-        </select>
+      <!-- 강사 표시 (베이직은 읽기전용) -->
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:4px">강사</div>
+        <div id="qd-teacher-display" style="font-size:13px;font-weight:600;color:#1a1a1a;padding:8px 12px;background:#f0f0ee;border-radius:8px"></div>
+        <input id="qd-teacher" type="hidden">
+      </div>
+      <!-- 분류 — WANNA는 BASIC 고정, 나머지는 선택 -->
+      <div id="qd-cat-wrap" style="margin-bottom:10px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:6px">수업 분류</div>
+        <div id="qd-cat-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <input id="qd-cat" type="hidden">
       </div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn-cancel" onclick="qdBack()" style="flex:1">← 다시 검색</button>
@@ -777,7 +878,7 @@ const AV=['av0','av1','av2','av3','av4'];
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();renderTodayWidget();},(err)=>{setSyncStatus('err');console.error(err);});
+onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();renderTodayWidget();updatePayStats();},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
@@ -785,7 +886,28 @@ function initials(n){return n.slice(0,2);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function hlMatch(text,q){if(!q)return text;const i=text.indexOf(q);if(i===-1)return text;return text.slice(0,i)+`<span class="hl-text">${text.slice(i,i+q.length)}</span>`+text.slice(i+q.length);}
 window.setFilter=(f)=>{filterMode=f;document.querySelectorAll('.filt-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));render();renderTodayWidget();};
-window.selectPass=(btn,val)=>{selectedPass=val;document.querySelectorAll('.pass-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');};
+window.selectPass=(btn,val)=>{
+  selectedPass=val;
+  document.querySelectorAll('.pass-btn:not(.edit-pass-btn):not(.ac-cat-btn)').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const extra=document.getElementById('inp-basic-extra');
+  extra.classList.toggle('show',val==='basic');
+  if(val==='basic'){
+    // 첫 번째 강사 기본 선택
+    const firstBtn=document.querySelector('#inp-teacher-btns .basic-teacher-btn');
+    if(firstBtn&&!document.querySelector('#inp-teacher-btns .basic-teacher-btn.active')) firstBtn.classList.add('active');
+  }
+};
+window.selectWeek=(btn,w)=>{
+  document.querySelectorAll('#inp-basic-extra .basic-week-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+// 강사 버튼 선택 (신규/수정/재결제 공용)
+window.selectBasicTeacher=(btn,ctx,name)=>{
+  const rowId=ctx==='inp'?'inp-teacher-btns':ctx==='edit'?'edit-teacher-btns':'renew-teacher-btns';
+  document.querySelectorAll(`#${rowId} .basic-teacher-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
 window.toggleStats=()=>{statsOpen=!statsOpen;document.getElementById('stats').classList.toggle('hidden',!statsOpen);document.getElementById('stats-arrow').classList.toggle('open',statsOpen);};
 window.onSearch=(val)=>{searchQuery=val.trim();document.getElementById('search-clear').style.display=val?'block':'none';render();};
 window.clearSearch=()=>{document.getElementById('search').value='';searchQuery='';document.getElementById('search-clear').style.display='none';render();};
@@ -813,11 +935,11 @@ window.doDeduct=async(memberId,teacher,cat)=>{
   toast(`${m.name}님 수강 처리 완료 (잔여 ${m.remaining-1}회)`);
 };;
 window.undoDeduct=async(id)=>{
-  const m=members.find(x=>x.id===id);
-  if(!m||m.remaining>=(m.passType||4))return;
-  // 마지막 수강이력 제거
+  const m=members.find(x=>x.id===id);if(!m)return;
+  const total=m.passType==='basic'?(m.basicWeeks||3):(m.passType||4);
+  if(m.remaining>=total)return;
   const history=[...(m.history||[])];
-  if(history.length>0) history.pop(); // 가장 최근 이력 삭제
+  if(history.length>0) history.pop();
   setSyncStatus('saving');
   await updateDoc(doc(db,'members',id),{remaining:m.remaining+1,history});
   toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);
@@ -826,14 +948,96 @@ window.saveMemo=async(id,val)=>{await updateDoc(doc(db,'members',id),{memo:val})
 window.addHistory=async(id,dateVal)=>{if(!dateVal){toast('날짜를 선택해 주세요.');return;}const m=members.find(x=>x.id===id);if(!m)return;const history=[...(m.history||[]),{date:dateVal,id:Date.now()}];history.sort((a,b)=>a.date.localeCompare(b.date));setSyncStatus('saving');await updateDoc(doc(db,'members',id),{history});toast('수강 이력 추가됨');};
 window.deleteHistory=async(memberId,histId)=>{const m=members.find(x=>x.id===memberId);if(!m)return;const history=(m.history||[]).filter(h=>h.id!==histId);setSyncStatus('saving');await updateDoc(doc(db,'members',memberId),{history});};
 window.removeMember=async(id)=>{const m=members.find(x=>x.id===id);if(!confirm(`${m?.name}님을 삭제하시겠습니까?`))return;setSyncStatus('saving');await deleteDoc(doc(db,'members',id));toast('삭제되었습니다.');};
-window.openEdit=(id)=>{const m=members.find(x=>x.id===id);if(!m)return;document.getElementById('edit-id').value=id;document.getElementById('edit-name').value=m.name||'';document.getElementById('edit-name-en').value=m.nameEn||'';document.getElementById('edit-phone').value=m.phone||'';document.getElementById('edit-date').value=m.payDate||'';document.getElementById('edit-pass-4').classList.toggle('active',(m.passType||4)===4);document.getElementById('edit-pass-8').classList.toggle('active',(m.passType||4)===8);document.getElementById('edit-modal').classList.add('show');};
+window.openEdit=(id)=>{
+  const m=members.find(x=>x.id===id);if(!m)return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-name').value=m.name||'';
+  document.getElementById('edit-name-en').value=m.nameEn||'';
+  document.getElementById('edit-phone').value=m.phone||'';
+  document.getElementById('edit-date').value=m.payDate||'';
+  const isBasic=m.passType==='basic';
+  document.getElementById('edit-pass-4').classList.toggle('active',(m.passType||4)===4);
+  document.getElementById('edit-pass-8').classList.toggle('active',m.passType===8);
+  document.getElementById('edit-pass-basic').classList.toggle('active',isBasic);
+  const extra=document.getElementById('edit-basic-extra');
+  extra.classList.toggle('show',isBasic);
+  if(isBasic){
+    const weeks=m.basicWeeks||3;
+    document.getElementById('edit-week-3').classList.toggle('active',weeks===3);
+    document.getElementById('edit-week-4').classList.toggle('active',weeks===4);
+    // 강사 버튼 자동 선택
+    document.querySelectorAll('#edit-teacher-btns .basic-teacher-btn').forEach(b=>{
+      b.classList.toggle('active',b.textContent.trim()===m.basicTeacher);
+    });
+  }
+  document.getElementById('edit-modal').classList.add('show');
+};
 window.closeEdit=()=>document.getElementById('edit-modal').classList.remove('show');
-window.selectEditPass=(btn,val)=>{document.querySelectorAll('.edit-pass-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');};
-window.saveEdit=async()=>{const id=document.getElementById('edit-id').value;const name=document.getElementById('edit-name').value.trim();const nameEn=document.getElementById('edit-name-en').value.trim();const phone=document.getElementById('edit-phone').value.trim();const payDate=document.getElementById('edit-date').value;const passType=document.getElementById('edit-pass-4').classList.contains('active')?4:8;if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}setSyncStatus('saving');await updateDoc(doc(db,'members',id),{name,nameEn,phone,payDate,passType});closeEdit();toast(`${name}님 정보 수정 완료`);};
-window.openModal=()=>{selectedPass=4;document.querySelectorAll('.pass-btn').forEach((b,i)=>b.classList.toggle('active',i===0));document.getElementById('inp-name').value='';document.getElementById('inp-name-en').value='';document.getElementById('inp-phone').value='010-';document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];document.getElementById('modal').classList.add('show');setTimeout(()=>document.getElementById('inp-name').focus(),50);};
+window.selectEditPass=(btn,val)=>{
+  document.querySelectorAll('.edit-pass-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('edit-basic-extra').classList.toggle('show',val==='basic');
+};
+window.selectEditWeek=(btn,w)=>{
+  document.querySelectorAll('#edit-basic-extra .basic-week-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+window.saveEdit=async()=>{
+  const id=document.getElementById('edit-id').value;
+  const name=document.getElementById('edit-name').value.trim();
+  const nameEn=document.getElementById('edit-name-en').value.trim();
+  const phone=document.getElementById('edit-phone').value.trim();
+  const payDate=document.getElementById('edit-date').value;
+  const isBasic=document.getElementById('edit-pass-basic').classList.contains('active');
+  let passType=document.getElementById('edit-pass-4').classList.contains('active')?4:8;
+  let basicTeacher='',basicWeeks=3,remaining;
+  if(isBasic){
+    passType='basic';
+    const activeBtn=document.querySelector('#edit-teacher-btns .basic-teacher-btn.active');
+    basicTeacher=activeBtn?activeBtn.textContent.trim():'';
+    basicWeeks=document.getElementById('edit-week-4').classList.contains('active')?4:3;
+    remaining=basicWeeks;
+    if(!basicTeacher){toast('강사를 선택해 주세요.');return;}
+  }
+  if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}
+  const data={name,nameEn,phone,payDate,passType};
+  if(isBasic){data.basicTeacher=basicTeacher;data.basicWeeks=basicWeeks;data.remaining=remaining;}
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',id),data);
+  closeEdit();toast(`${name}님 정보 수정 완료`);
+};
+window.openModal=()=>{
+  selectedPass=4;
+  document.querySelectorAll('.pass-btn:not(.edit-pass-btn):not(.ac-cat-btn)').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('inp-basic-extra').classList.remove('show');
+  document.getElementById('inp-name').value='';document.getElementById('inp-name-en').value='';
+  document.getElementById('inp-phone').value='010-';document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>document.getElementById('inp-name').focus(),50);
+};
 window.closeModal=()=>document.getElementById('modal').classList.remove('show');
-window.saveNew=async()=>{const name=document.getElementById('inp-name').value.trim();const nameEn=document.getElementById('inp-name-en').value.trim();const phone=document.getElementById('inp-phone').value.trim();const payDate=document.getElementById('inp-date').value;if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}setSyncStatus('saving');await addDoc(colRef,{name,nameEn,phone,payDate,passType:selectedPass,remaining:selectedPass,avIdx:members.length%AV.length,memo:'',history:[],createdAt:serverTimestamp()});closeModal();toast(`${name}님 등록 완료!`);};
-
+window.saveNew=async()=>{
+  const name=document.getElementById('inp-name').value.trim();
+  const nameEn=document.getElementById('inp-name-en').value.trim();
+  const phone=document.getElementById('inp-phone').value.trim();
+  const payDate=document.getElementById('inp-date').value;
+  if(!name||!phone||!payDate){toast('모든 항목을 입력해 주세요.');return;}
+  const isBasic=selectedPass==='basic';
+  let basicTeacher='',basicWeeks=3,remaining=selectedPass;
+  if(isBasic){
+    const activeBtn=document.querySelector('#inp-teacher-btns .basic-teacher-btn.active');
+    basicTeacher=activeBtn?activeBtn.textContent.trim():'';
+    const w4=document.querySelector('#inp-basic-extra .basic-week-btn[data-week="4"]');
+    basicWeeks=w4&&w4.classList.contains('active')?4:3;
+    remaining=basicWeeks;
+    if(!basicTeacher){toast('강사를 선택해 주세요.');return;}
+  }
+  const data={name,nameEn,phone,payDate,passType:selectedPass,remaining,avIdx:members.length%AV.length,memo:'',history:[],createdAt:serverTimestamp()};
+  if(isBasic){data.basicTeacher=basicTeacher;data.basicWeeks=basicWeeks;}
+  setSyncStatus('saving');
+  await addDoc(colRef,data);
+  closeModal();toast(`${name}님 등록 완료!`);
+};
 window.renewPass=(id)=>{
   const m=members.find(x=>x.id===id);
   if(!m) return;
@@ -843,12 +1047,32 @@ window.renewPass=(id)=>{
   const modal=document.createElement('div');
   modal.id='renew-modal';
   modal.className='modal-bg show';
-  modal.innerHTML=`<div class="modal" style="width:300px">
-    <div class="modal-title">🔄 재결제 — ${m.name}님</div>
+  modal.innerHTML=`<div class="modal" style="width:340px">
+    <div class="modal-title">🔄 Renew — ${m.name}</div>
     <div style="font-size:13px;color:#888;margin-bottom:16px">수강권 종류를 선택해 주세요.<br>결제일이 오늘로 갱신됩니다.</div>
-    <div class="pass-select" style="gap:10px">
+    <div class="pass-select" style="gap:8px;flex-wrap:wrap">
       <button class="pass-btn" onclick="confirmRenew('${id}',4)">4 Tickets</button>
       <button class="pass-btn" onclick="confirmRenew('${id}',8)">8 Tickets</button>
+      <button class="pass-btn" onclick="showRenewBasic('${id}')">Basic Monthly</button>
+    </div>
+    <div class="basic-extra" id="renew-basic-extra">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Teacher</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="renew-teacher-btns">
+          <button class="basic-teacher-btn${m.basicTeacher==='WANNA'?' active':''}" onclick="selectBasicTeacher(this,'renew','WANNA')">WANNA</button>
+          <button class="basic-teacher-btn${m.basicTeacher==='EVE'?' active':''}" onclick="selectBasicTeacher(this,'renew','EVE')">EVE</button>
+          <button class="basic-teacher-btn${m.basicTeacher==='YENI CHO'?' active':''}" onclick="selectBasicTeacher(this,'renew','YENI CHO')">YENI CHO</button>
+          <button class="basic-teacher-btn${m.basicTeacher==='HYOS'?' active':''}" onclick="selectBasicTeacher(this,'renew','HYOS')">HYOS</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;margin-top:4px">Weeks</div>
+        <div class="basic-week-row">
+          <button class="basic-week-btn${(m.basicWeeks||3)===3?' active':''}" id="renew-week-3" onclick="selectRenewWeek(this,3)">3 weeks (3 sessions)</button>
+          <button class="basic-week-btn${m.basicWeeks===4?' active':''}" id="renew-week-4" onclick="selectRenewWeek(this,4)">4 weeks (4 sessions)</button>
+        </div>
+      </div>
+      <button class="btn-save" style="width:100%;margin-top:8px" onclick="confirmRenewBasic('${id}')">Basic Monthly로 재결제</button>
     </div>
     <div class="modal-btns" style="margin-top:14px">
       <button class="btn-cancel" onclick="document.getElementById('renew-modal').remove()">취소</button>
@@ -860,16 +1084,30 @@ window.renewPass=(id)=>{
 
 window.confirmRenew=async(id,passType)=>{
   document.getElementById('renew-modal')?.remove();
-  const m=members.find(x=>x.id===id);
-  if(!m) return;
+  const m=members.find(x=>x.id===id);if(!m)return;
   const today=new Date().toISOString().split('T')[0];
   setSyncStatus('saving');
-  await updateDoc(doc(db,'members',id),{
-    remaining:passType,
-    passType:passType,
-    payDate:today,
-  });
+  await updateDoc(doc(db,'members',id),{remaining:passType,passType:passType,payDate:today});
   toast(m.name+'님 재결제 완료! ('+passType+'회 리셋)');
+};
+window.showRenewBasic=(id)=>{
+  document.getElementById('renew-basic-extra').classList.add('show');
+};
+window.selectRenewWeek=(btn,w)=>{
+  document.querySelectorAll('#renew-basic-extra .basic-week-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+window.confirmRenewBasic=async(id)=>{
+  const activeBtn=document.querySelector('#renew-teacher-btns .basic-teacher-btn.active');
+  const teacher=activeBtn?activeBtn.textContent.trim():'';
+  if(!teacher){toast('강사를 선택해 주세요.');return;}
+  const weeks=document.getElementById('renew-week-4').classList.contains('active')?4:3;
+  const today=new Date().toISOString().split('T')[0];
+  const m=members.find(x=>x.id===id);if(!m)return;
+  document.getElementById('renew-modal')?.remove();
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',id),{passType:'basic',basicTeacher:teacher,basicWeeks:weeks,remaining:weeks,payDate:today});
+  toast(`${m.name}님 Basic Monthly 재결제 완료! (${teacher} · ${weeks} weeks)`);
 };
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeEdit();});
@@ -877,20 +1115,24 @@ function render(){
   const total=members.length,active=members.filter(m=>daysLeft(m.payDate)>0&&m.remaining>0).length,expired=members.filter(m=>daysLeft(m.payDate)<=0||m.remaining<=0).length;
   document.getElementById('stats').innerHTML=`<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 수강생</div></div><div class="stat-card"><div class="stat-num" style="color:#1d9e75">${active}</div><div class="stat-label">유효 수강권</div></div><div class="stat-card"><div class="stat-num" style="color:#e24b4a">${expired}</div><div class="stat-label">만료·소진</div></div>`;
   // 필터 버튼 카운트 업데이트
-  const cnt4=members.filter(m=>String(m.passType||4)==='4'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
-  const cnt8=members.filter(m=>String(m.passType||4)==='8'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cnt4=members.filter(m=>m.passType===4&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cnt8=members.filter(m=>m.passType===8&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cntBasic=members.filter(m=>m.passType==='basic'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cntExp=members.filter(m=>daysLeft(m.payDate)<=0||m.remaining<=0).length;
   const cntAll=members.length;
   const fb=document.getElementById('filt-all');if(fb)fb.textContent='전체 수강생 ('+cntAll+')';
   const f4=document.getElementById('filt-4');if(f4)f4.textContent='4 Tickets ('+cnt4+')';
   const f8=document.getElementById('filt-8');if(f8)f8.textContent='8 Tickets ('+cnt8+')';
+  const fbasic=document.getElementById('filt-basic');if(fbasic)fbasic.textContent='Basic Monthly ('+cntBasic+')';
   const fe=document.getElementById('filt-exp');if(fe)fe.textContent='만료·소진 ('+cntExp+')';
   let filtered=members.filter(m=>{
     if(filterMode==='expired'){
       const isExp=daysLeft(m.payDate)<=0||m.remaining<=0;
       if(!isExp) return false;
+    } else if(filterMode==='basic'){
+      if(m.passType!=='basic') return false;
     } else if(filterMode!=='all'){
-      if(String(m.passType||4)!==filterMode) return false;
+      if(m.passType!==Number(filterMode)) return false;
     }
     if(!searchQuery)return true;
     const q=searchQuery.replace(/-/g,'');
@@ -960,12 +1202,15 @@ function renderTodayWidget(){
     const cardCls=isExp?'expired':urgent?'urgent':'good',badgeCls=isExp?'be':urgent?'bu':'bv',badgeText=isExp?(m.remaining<=0?'소진':'만료'):`D-${dl}`;
     const expDate=getExpiry(m.payDate),expStr=`${expDate.getFullYear()}.${String(expDate.getMonth()+1).padStart(2,'0')}.${String(expDate.getDate()).padStart(2,'0')}`;
     const av=AV[(m.avIdx||0)%AV.length],passType=m.passType||4;
-    const passLabel=passType===8?'8 Tickets':'4 Tickets',passBadgeCls=passType===8?'pt8':'pt4';
-    const used=passType-m.remaining;
-    const dots=Array.from({length:passType},(_,i)=>i<used?`<div class="dot dot-used">${i+1}</div>`:`<div class="dot ${urgent?'dot-urg':'dot-ok'}">${i+1}</div>`).join('');
+    const isBasic=passType==='basic';
+    const totalSlots=isBasic?(m.basicWeeks||3):passType;
+    const passLabel=isBasic?`베이직 · ${m.basicTeacher||''}`:passType===8?'8 Tickets':'4 Tickets';
+    const passBadgeCls=isBasic?'pt-basic':passType===8?'pt8':'pt4';
+    const used=totalSlots-m.remaining;
+    const dots=Array.from({length:totalSlots},(_,i)=>i<used?`<div class="dot dot-used">${i+1}</div>`:`<div class="dot ${urgent?'dot-urg':'dot-ok'}">${i+1}</div>`).join('');
     const progW=Math.max(0,Math.min(100,(28-Math.max(0,dl))/28*100)),progColor=isExp?'#e24b4a':urgent?'#ef9f27':'#1d9e75';
     const isHL=searchQuery&&(m.name.includes(searchQuery)||m.phone.replace(/-/g,'').includes(searchQuery.replace(/-/g,'')));
-    const memoEsc=(m.memo||'').replace(/"/g,'&quot;'),canUndo=m.remaining<passType,history=m.history||[];
+    const memoEsc=(m.memo||'').replace(/"/g,'&quot;'),canUndo=m.remaining<totalSlots,history=m.history||[];
     const histItems=history.length===0?`<div class="history-empty">수강 이력 없음</div>`:`<div class="history-list">${history.slice().reverse().map(h=>`<div class="history-item">
   <span class="history-date">${h.date.replace(/-/g,'.')}${h.time?' <span style="color:#aaa;font-size:11px">'+h.time+'</span>':''}</span>
   ${h.teacher?`<span style="font-size:11px;color:#555;font-weight:500">${h.teacher}${h.cat?' · <span style="color:#aaa">'+{'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP'}[h.cat]||h.cat+'</span>':''}</span>`:''}
@@ -986,7 +1231,7 @@ function renderTodayWidget(){
         <div class="info-block"><div class="info-label">만료일</div><div class="info-val">${expStr}</div></div>
       </div>
       <div class="remain-block">
-        <div class="remain-header"><span class="remain-label">잔여 횟수</span><span class="remain-count">${m.remaining}<span class="denom"> / ${passType}회</span></span></div>
+        <div class="remain-header"><span class="remain-label">잔여 횟수</span><span class="remain-count">${m.remaining}<span class="denom"> / ${totalSlots}회</span></span></div>
         <div class="sessions">${dots}</div>
         <div class="pbar"><div class="pfill" style="width:${Math.round(progW)}%;background:${progColor}"></div></div>
         <div class="elapsed">${28-Math.max(0,dl)}일 경과</div>
@@ -1114,7 +1359,7 @@ const CAT_DOT={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'
 const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDUCK","LINY","WANNA","CHAERIN","HINARI","BUCKEY","TEDDY","HYNN","EVE","SSOJU","NATTY","YENI CHO","SOPHIEHEN","MINNY PARK","CHOCOL","ASME","REALEE","JUNGWOO","JJ","PITU","KUNA","SSONG","MINA MYOUNG","KAAN","MAAIN","HION","AUSTIN","BELIEVE","GUMA","ROSY","LETDO","FUNKY Y","HALO","HYOS X COI","HAIAN","PIKI","NOHWON","SIR","DAIM","JIOH","JIA","SUHWA","HANNAH","TEDDY X KAAN","AZHA X ARMSEOK"];
 
 let payRecords=[],payTeachers=[];
-let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0;
+let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0;
 let showAllTeachers=false,selMonthPay=new Date().toISOString().slice(0,7),curPayTab='input';
 
 function loadPay(){
@@ -1341,9 +1586,55 @@ function selPay(val,key){
     document.getElementById('pb-'+k).className='chip'+(fPay&&k===key?' on-'+key:'');
   });
 }
-function addAmt(n){fAmt+=n;updateAmtDisplay();}
+function selectTicket(el,passType,price){
+  if(price>0){fAmt+=price;}
+  fPassType=passType;
+  updateAmtDisplay();
+  showPassRegWrap(passType);
+}
+function selectBasicMonthlyPass(el){
+  // 기존 Basic 월등록 드롭다운 + 다회권 등록 패널
+  fPassType='basic';
+  showPassRegWrap('basic');
+  selectBasicMonthly(el); // 기존 가격 선택 로직 유지
+}
+function showPassRegWrap(passType){
+  const wrap=document.getElementById('pass-reg-wrap');
+  const basicExtra=document.getElementById('pass-basic-extra');
+  const weekExtra=document.getElementById('pass-week-extra');
+  const label=document.getElementById('pass-reg-label');
+  wrap.style.display='block';
+  basicExtra.style.display=passType==='basic'?'block':'none';
+  weekExtra.style.display=passType==='basic'?'block':'none';
+  if(passType==='pro'){
+    label.textContent='📋 PRO 회원 등록';
+    document.querySelector('#pass-reg-wrap .pass-reg-hint').textContent='결제 등록 시 PRO 회원으로 등록됩니다';
+  } else {
+    label.textContent='📋 다회권 등록';
+    document.querySelector('#pass-reg-wrap .pass-reg-hint').textContent='결제 등록 시 다회권도 자동 생성됩니다';
+  }
+}
+function clearPassReg(){
+  fPassType=0;
+  document.getElementById('pass-reg-wrap').style.display='none';
+  document.getElementById('f-pass-phone').value='';
+  document.getElementById('f-pass-basic-teacher').value='';
+  document.getElementById('f-pass-basic-weeks').value='3';
+}
+function addAmtNoPass(n){
+  fAmt+=n; fWaterOnly=false;
+  updateAmtDisplay();
+  if(!fPassType) document.getElementById('pass-reg-wrap').style.display='none';
+}
+function addWater(){
+  const wasWaterOnly=(fAmt===0)||fWaterOnly; // 비어있거나 물만 있던 상태
+  fAmt+=1000; fWater=true;
+  fWaterOnly=wasWaterOnly&&!fPassType;
+  updateAmtDisplay();
+}
+function addAmt(n){fAmt+=n;fWaterOnly=false;updateAmtDisplay();}
 function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom').value)||0;if(v>0){fAmt+=v;updateAmtDisplay();document.getElementById('f-amt-custom').value='';}}
-function resetAmt(){fAmt=0;updateAmtDisplay();document.getElementById('f-amt-custom').value='';}
+function resetAmt(){fAmt=0;fWater=false;fWaterOnly=false;fPassType=0;updateAmtDisplay();document.getElementById('f-amt-custom').value='';clearPassReg();}
 function updateAmtDisplay(){
   const d=document.getElementById('amt-display'),rb=document.getElementById('amt-reset-btn');
   d.style.color='';d.style.fontWeight='';
@@ -1356,12 +1647,32 @@ function addPayRecord(){
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
   const isPro=fTicket==='전문반';
-
-  // 물 단독 결제 여부 (1,000원만 선택, 이름 없어도 허용)
-  const isWaterOnly=fAmt===1000&&!nameInput;
+  // 물만 담겨있을 때만 이름 없이 허용
+  const isWaterOnly=fWater&&fWaterOnly&&!nameInput;
   const name=isWaterOnly?'물':nameInput;
 
   if(!name){alert('수강생 이름을 입력해주세요');return;}
+
+  // 🎫 티켓 차감 모드
+  if(fDeduct){
+    const matched=members.filter(m=>m.name&&m.name===name);
+    if(!matched.length){
+      // 이름 부분일치도 시도
+      const partial=members.filter(m=>m.name&&m.name.includes(name));
+      if(!partial.length){alert(`"${name}"님은 다회권 미등록 회원입니다.`);return;}
+      if(partial.length>1){
+        // 동명이인 — 기존 차감 모달로 안내
+        alert(`"${name}"님이 여러 명입니다. 🎫 차감 버튼 옆 모달을 이용해 주세요.`);
+        return;
+      }
+      deductMemberAndRecord(partial[0],date,note);
+      return;
+    }
+    if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 🎫 차감 버튼 옆 모달을 이용해 주세요.`);return;}
+    deductMemberAndRecord(matched[0],date,note);
+    return;
+  }
+
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
   if(!isPro&&!isWaterOnly&&!fPay){alert('결제 방법을 선택해주세요');return;}
 
@@ -1370,6 +1681,32 @@ function addPayRecord(){
   const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:fTicket,amt:fAmt,pay:fPay,note};
   savePayToFirebase(rec);
   savePay();
+
+  // 다회권 / PRO 자동 등록
+  if(fPassType&&name){
+    const phone=document.getElementById('f-pass-phone').value.trim();
+    if(!phone){alert('전화번호를 입력해 주세요.');return;}
+    const isProPass=fPassType==='pro';
+    const passData={
+      name,phone,payDate:date,
+      passType:fPassType,
+      remaining:isProPass?0:fPassType==='basic'
+        ?parseInt(document.getElementById('f-pass-basic-weeks').value||3)
+        :fPassType,
+      avIdx:members.length%AV.length,
+      memo:'',history:[],
+    };
+    if(fPassType==='basic'){
+      passData.basicTeacher=document.getElementById('f-pass-basic-teacher').value;
+      passData.basicWeeks=parseInt(document.getElementById('f-pass-basic-weeks').value||3);
+      if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
+    }
+    setSyncStatus('saving');
+    addDoc(collection(db,'members'),passData).then(()=>{
+      toast(`${name}님 ${isProPass?'PRO':'다회권'} 등록 완료!`);
+    }).catch(e=>{toast('등록 중 오류: '+e.message);});
+  }
+
   clearPayForm();
   const t=document.getElementById('toast');
   t.textContent=isWaterOnly?'물 결제 완료! 💧':(name+'님 결제 등록 완료!');
@@ -1378,13 +1715,32 @@ function addPayRecord(){
   if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
 }
 
+async function deductMemberAndRecord(m,date,note){
+  if(m.remaining<=0){alert(`${m.name}님은 잔여 횟수가 없습니다.`);return;}
+  if(daysLeft(m.payDate)<=0){alert(`${m.name}님의 수강권이 만료되었습니다.`);return;}
+  const now=new Date();
+  const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const history=[...(m.history||[]),{date,time:timeStr,teacher:fTeacher,cat:fCat,id:Date.now()}];
+  setSyncStatus('saving');
+  await updateDoc(doc(db,'members',m.id),{remaining:m.remaining-1,history});
+  const newRemain=m.remaining-1;
+  clearPayForm();
+  const t=document.getElementById('toast');
+  t.textContent=`${m.name}님 티켓 차감 완료 — 잔여 ${newRemain}회`;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+  const cntEl=document.getElementById('ps-cnt');
+  if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
+}
+
 function clearPayForm(){
   document.getElementById('f-name').value='';
   document.getElementById('f-note').value='';
   document.getElementById('f-amt-custom').value='';
-  fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;showAllTeachers=false;
+  fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;fWater=false;fWaterOnly=false;fDeduct=false;fPassType=0;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
   const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
+  const dc=document.getElementById('deduct-chip');if(dc){dc.dataset.on='0';dc.style.background='';dc.style.borderColor='#204828';dc.style.color='#204828';dc.style.fontWeight='';}
+  clearPassReg();
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   ['card','transfer','cash'].forEach(k=>document.getElementById('pb-'+k).className='chip');
   updateAmtDisplay();renderClassChips();
@@ -1393,11 +1749,50 @@ function clearPayForm(){
 function updatePayStats(){
   const today=new Date().toISOString().split('T')[0];
   const todayRecs=payRecords.filter(r=>r.date===today);
-  const cd=todayRecs.filter(r=>r.pay==='카드').length;
-  const tf=todayRecs.filter(r=>r.pay==='이체').length;
-  const cs=todayRecs.filter(r=>r.pay==='현금').length;
-  document.getElementById('ps-cnt').textContent=todayRecs.length;
-  document.getElementById('ps-pay').textContent=cd+' / '+tf+' / '+cs;
+
+  // 물 결제 (이름이 '물' 이거나 amt===1000이고 이름에 '물' 포함)
+  const waterRecs=todayRecs.filter(r=>r.name==='물'||(r.amt===1000&&r.name==='물'));
+  // 일반 결제 (물 제외)
+  const payRecs=todayRecs.filter(r=>r.name!=='물');
+
+  const cd=payRecs.filter(r=>r.pay==='카드').length;
+  const tf=payRecs.filter(r=>r.pay==='이체').length;
+  const cs=payRecs.filter(r=>r.pay==='현금').length;
+  const payAmt=payRecs.reduce((s,r)=>s+r.amt,0);
+
+  // 기존 티켓 차감 — members history 기준
+  const deductItems=[];
+  (members||[]).forEach(m=>{
+    (m.history||[]).forEach(h=>{
+      if(h.date===today) deductItems.push({name:m.name,teacher:h.teacher||'',time:h.time||''});
+    });
+  });
+
+  // 물 판매
+  const waterCnt=waterRecs.length;
+  const waterAmt=waterRecs.reduce((s,r)=>s+r.amt,0);
+
+  // 총 매출 (일반결제 + 물)
+  const totalAmt=payAmt+waterAmt;
+  const totalCnt=todayRecs.length;
+
+  // 카드 1: 일반 결제
+  document.getElementById('ps-pay-cnt').textContent=payRecs.length+'건';
+  document.getElementById('ps-pay-method').textContent=`카드 ${cd} · 이체 ${tf} · 현금 ${cs}`;
+
+  // 카드 2: 기존 티켓 차감
+  document.getElementById('ps-deduct-cnt').textContent=deductItems.length+'회';
+  document.getElementById('ps-deduct-sub').textContent=deductItems.length
+    ? deductItems.slice(-2).map(d=>d.name+(d.teacher?' ('+d.teacher+')':'')).join(', ')+(deductItems.length>2?' 외':'')
+    : '오늘 차감 없음';
+
+  // 카드 3: 물
+  document.getElementById('ps-water-cnt').textContent=waterCnt+'개';
+  document.getElementById('ps-water-amt').textContent=fmtW(waterAmt);
+
+  // 카드 4: 총 매출
+  document.getElementById('ps-cnt').textContent=fmtW(totalAmt);
+  document.getElementById('ps-total-cnt').textContent=`결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`;
 }
 
 function switchPayTab(id,btn){
@@ -1822,7 +2217,7 @@ function qdSearch(q){
       onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">
       <div>
         <div style="font-size:13px;font-weight:600;color:#1a1a1a">${m.name}</div>
-        <div style="font-size:11px;color:#aaa;margin-top:1px">${phoneMasked} · ${m.passType||4} Tickets</div>
+        <div style="font-size:11px;color:#aaa;margin-top:1px">${phoneMasked} · ${m.passType==='basic'?`Basic (${m.basicTeacher||''})`:m.passType+'T'}</div>
       </div>
       <span style="font-size:12px;font-weight:600;color:${statusColor};white-space:nowrap">${statusTxt}</span>
     </div>`;
@@ -1843,8 +2238,54 @@ function qdPick(memberId){
   document.getElementById('qd-step1').style.display='none';
   document.getElementById('qd-step2').style.display='block';
 
+  // 강사 표시 + 분류 버튼 세팅
+  const isBasic=m.passType==='basic';
+  const teacher=isBasic?(m.basicTeacher||''):'';
+  document.getElementById('qd-teacher').value=teacher;
+  document.getElementById('qd-teacher-display').textContent=teacher||'(미지정)';
+
+  // WANNA = BASIC 고정 / 나머지 베이직 강사 = REGULAR·POP-UP 선택 / 일반 회원 = 전체
+  const catBtns=document.getElementById('qd-cat-btns');
+  const catInput=document.getElementById('qd-cat');
+  catInput.value='';
+  catBtns.innerHTML='';
+
+  let cats=[];
+  if(isBasic && teacher==='WANNA'){
+    // WANNA는 BASIC 고정
+    cats=[{val:'베이직',label:'BASIC'}];
+    catInput.value='베이직';
+  } else if(isBasic){
+    // EVE, YENI CHO, HYOS — 정규/팝업 선택
+    cats=[{val:'정규',label:'REGULAR'},{val:'팝업',label:'POP-UP'}];
+  } else {
+    // 일반 4/8 티켓 — 전체 분류
+    cats=[{val:'정규',label:'REGULAR'},{val:'팝업',label:'POP-UP'},{val:'비기너',label:'BEGINNER'},{val:'베이직',label:'BASIC'},{val:'K-POP',label:'K-POP'},{val:'워크샵',label:'WORKSHOP'}];
+  }
+
+  cats.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.style.cssText='padding:7px 14px;border:1.5px solid #e0e0da;border-radius:8px;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666;transition:.12s';
+    b.textContent=c.label;
+    if(i===0&&(isBasic&&teacher==='WANNA')){
+      // WANNA: 자동 선택, 클릭 불가
+      b.style.borderColor='#204828';b.style.background='#eaf4e5';b.style.color='#204828';b.style.cursor='default';
+    }
+    b.addEventListener('click',function(){
+      catBtns.querySelectorAll('button').forEach(x=>{x.style.borderColor='#e0e0da';x.style.background='#fff';x.style.color='#666';});
+      this.style.borderColor='#204828';this.style.background='#eaf4e5';this.style.color='#204828';
+      catInput.value=c.val;
+    });
+    catBtns.appendChild(b);
+  });
+
+  // WANNA가 아닌 베이직은 첫 버튼 기본 선택 안 함 (강제 선택 유도)
+  if(isBasic && teacher!=='WANNA' && cats.length>0){
+    // 아무것도 선택 안 된 상태 유지
+  }
+
   const remain=m.remaining??0;
-  const total=m.passType||4;
+  const total=isBasic?(m.basicWeeks||3):(m.passType||4);
   const expired=daysLeft(m.payDate)<=0;
   const expDate=new Date(m.payDate);expDate.setDate(expDate.getDate()+28);
   const expStr=(expDate.getMonth()+1)+'/'+ expDate.getDate();
@@ -1893,6 +2334,8 @@ function qdBack(){
   document.getElementById('qd-name').value='';
   document.getElementById('qd-teacher').value='';
   document.getElementById('qd-cat').value='';
+  document.getElementById('qd-cat-btns').innerHTML='';
+  document.getElementById('qd-teacher-display').textContent='';
   setTimeout(()=>document.getElementById('qd-name').focus(),100);
 }
 
@@ -1906,6 +2349,11 @@ async function qdConfirm(){
 
   const teacher=document.getElementById('qd-teacher').value.trim();
   const cat=document.getElementById('qd-cat').value;
+  const isBasic=m.passType==='basic';
+  if(isBasic && teacher!=='WANNA' && !cat){
+    toast('수업 분류를 선택해 주세요 (REGULAR / POP-UP)');
+    btn.disabled=false;btn.textContent='차감하기';return;
+  }
   const now=new Date();
   const today=now.toISOString().split('T')[0];
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
@@ -2022,8 +2470,11 @@ let deductTargetId=null;
 
 function openDeductClassModal(m){
   deductTargetId=m.id;
+  const isBasic=m.passType==='basic';
   document.getElementById('dc-title').textContent=m.name+'님 수업 선택';
-  document.getElementById('dc-sub').textContent='오늘 수강한 수업을 선택해 주세요';
+  document.getElementById('dc-sub').textContent=isBasic
+    ?`${m.basicTeacher||''} Basic 수업만 표시됩니다`
+    :'오늘 수강한 수업을 선택해 주세요';
   const dow=new Date().getDay();
   const TT=window.TIMETABLE||{};
   const classes=TT[dow]||[];
@@ -2031,12 +2482,22 @@ function openDeductClassModal(m){
   const CAT_LABEL_M={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
   const list=document.getElementById('dc-list');
   list.innerHTML='';
-  // 임시 추가 수업도 포함
-  const allClasses=[...classes];
+
+  // 베이직 회원 → 해당 강사 베이직 수업만 / 일반 회원 → 전체
+  let allClasses=[...classes];
+  if(isBasic && m.basicTeacher){
+    allClasses=allClasses.filter(c=>
+      c.cat==='베이직' && c.t && c.t.toUpperCase().includes(m.basicTeacher.toUpperCase())
+    );
+    // 시간표에 없어도 강사 수업 버튼은 항상 표시
+    if(!allClasses.length){
+      allClasses=[{t:m.basicTeacher,cat:'베이직',time:''}];
+    }
+  }
+
   if(!allClasses.length){
     list.innerHTML='<div style="font-size:12px;color:#aaa;text-align:center;padding:10px">오늘 등록된 수업이 없습니다</div>';
   } else {
-    // 고정(정규/베이직/비기너/K-POP) 먼저, 팝업 다음
     const fixed=allClasses.filter(c=>c.cat!=='팝업').sort((a,b)=>a.time>b.time?1:-1);
     const popup=allClasses.filter(c=>c.cat==='팝업').sort((a,b)=>a.time>b.time?1:-1);
     [...fixed,...popup].forEach(c=>{
@@ -2076,7 +2537,32 @@ document.getElementById('deduct-class-modal').addEventListener('click',function(
 
 
 // ── 전문반 토글 ──
+function toggleDeduct(){
+  const chip=document.getElementById('deduct-chip');
+  if(!chip) return;
+  const isOn=chip.dataset.on==='1';
+  if(isOn){
+    chip.dataset.on='0';
+    chip.classList.remove('on');
+    chip.style.background='';chip.style.borderColor='#204828';chip.style.color='#204828';
+    fDeduct=false;
+    updateAmtDisplay();
+  } else {
+    // 전문반 OFF
+    const proChip=document.getElementById('pro-chip');
+    if(proChip&&proChip.dataset.on==='1'){togglePro();}
+    chip.dataset.on='1';
+    chip.style.background='#eaf4e5';chip.style.borderColor='#204828';chip.style.color='#0f6e56';chip.style.fontWeight='600';
+    fDeduct=true;fTicket='';fAmt=0;fWater=false;
+    const disp=document.getElementById('amt-display');
+    if(disp){disp.className='';disp.textContent='티켓 차감';disp.style.color='#204828';disp.style.fontWeight='600';}
+    document.getElementById('amt-reset-btn').style.display='none';
+  }
+}
 function togglePro(){
+  // 차감 버튼 OFF
+  const dc=document.getElementById('deduct-chip');
+  if(dc&&dc.dataset.on==='1'){dc.dataset.on='0';dc.style.background='';dc.style.borderColor='#204828';dc.style.color='#204828';dc.style.fontWeight='';fDeduct=false;updateAmtDisplay();}
   const chip=document.getElementById('pro-chip');
   if(!chip) return;
   const isOn=chip.dataset.on==='1';
