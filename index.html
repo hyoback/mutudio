@@ -917,9 +917,11 @@ const q=query(colRef,orderBy("createdAt"));
 onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));window.members=members;setSyncStatus('ok');setLastSync();render();renderTodayWidget();updatePayStats();},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
+window.daysLeft=daysLeft;
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
 function initials(n){return n.slice(0,2);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+window.toast=toast;
 function hlMatch(text,q){if(!q)return text;const i=text.indexOf(q);if(i===-1)return text;return text.slice(0,i)+`<span class="hl-text">${text.slice(i,i+q.length)}</span>`+text.slice(i+q.length);}
 window.setFilter=(f)=>{filterMode=f;document.querySelectorAll('.filt-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));render();renderTodayWidget();};
 window.selectPass=(btn,val)=>{
@@ -933,7 +935,8 @@ window.selectPass=(btn,val)=>{
     const firstBtn=document.querySelector('#inp-teacher-btns .basic-teacher-btn');
     if(firstBtn&&!document.querySelector('#inp-teacher-btns .basic-teacher-btn.active')) firstBtn.classList.add('active');
   }
-};
+}
+window.setSyncStatus=setSyncStatus;;
 window.selectWeek=(btn,w)=>{
   document.querySelectorAll('#inp-basic-extra .basic-week-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -1720,7 +1723,7 @@ function updateAmtDisplay(){
   else{d.textContent='금액을 선택하거나 입력하세요';d.className='amt-empty';rb.style.display='none';}
 }
 
-function addPayRecord(){
+async function addPayRecord(){
   const nameInput=document.getElementById('f-name').value.trim();
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
@@ -1743,11 +1746,11 @@ function addPayRecord(){
         alert(`"${name}"님이 여러 명입니다. 🎫 차감 버튼 옆 모달을 이용해 주세요.`);
         return;
       }
-      deductMemberAndRecord(partial[0],date,note);
+      await deductMemberAndRecord(partial[0],date,note);
       return;
     }
     if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 🎫 차감 버튼 옆 모달을 이용해 주세요.`);return;}
-    deductMemberAndRecord(matched[0],date,note);
+    await deductMemberAndRecord(matched[0],date,note);
     return;
   }
 
@@ -1782,8 +1785,8 @@ function addPayRecord(){
       memo:'예약금 납부',history:[],
     };
     dbCompat.collection('members').add(reserveData).then(()=>{
-      toast(`${name}님 예약금 등록 완료! (${teacher} · ${weeks}주)`);
-    }).catch(e=>{toast('등록 오류: '+e.message);});
+      (window.toast||function(){})(`${name}님 예약금 등록 완료! (${teacher} · ${weeks}주)`);
+    }).catch(e=>{(window.toast||function(){})('등록 오류: '+e.message);});
   }
 
   // 다회권 / PRO 자동 등록
@@ -1804,31 +1807,31 @@ function addPayRecord(){
       passData.basicWeeks=parseInt(document.getElementById('f-pass-basic-weeks').value||3);
       if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
     }
-    setSyncStatus('saving');
+    (window.setSyncStatus||function(){})('saving');
     dbCompat.collection('members').add(passData).then(()=>{
-      toast(`${name}님 ${isProPass?'PRO':'다회권'} 등록 완료!`);
-    }).catch(e=>{toast('등록 중 오류: '+e.message);});
+      (window.toast||function(){})(`${name}님 ${isProPass?'PRO':'다회권'} 등록 완료!`);
+    }).catch(e=>{(window.toast||function(){})('등록 중 오류: '+e.message);});
   }
 
   clearPayForm();
   const toastMsg=isWaterOnly?'물 결제 완료! 💧':(name+'님 결제 등록 완료!');
-  toast(toastMsg);
+  (window.toast||function(){})(toastMsg);
   const cntEl=document.getElementById('ps-cnt');
   if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
 }
 
 async function deductMemberAndRecord(m,date,note){
   if(m.remaining<=0){alert(`${m.name}님은 잔여 횟수가 없습니다.`);return;}
-  if(daysLeft(m.payDate)<=0){alert(`${m.name}님의 수강권이 만료되었습니다.`);return;}
+  if((window.daysLeft||function(){return 0})(m.payDate)<=0){alert(`${m.name}님의 수강권이 만료되었습니다.`);return;}
   if(!fTeacher){alert('수업(강사)을 먼저 선택해 주세요.');return;}
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const history=[...(m.history||[]),{date,time:timeStr,teacher:fTeacher,cat:fCat,id:Date.now()}];
-  setSyncStatus('saving');
+  (window.setSyncStatus||function(){})('saving');
   await dbCompat.collection('members').doc(m.id).update({remaining:m.remaining-1,history});
   const newRemain=m.remaining-1;
   clearPayForm();
-  toast(`${m.name}님 티켓 차감 완료 — 잔여 ${newRemain}회`);
+  (window.toast||function(){})(`${m.name}님 티켓 차감 완료 — 잔여 ${newRemain}회`);
   const cntEl=document.getElementById('ps-cnt');
   if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
 }
@@ -2320,7 +2323,7 @@ function qdSearch(q){
   }
   list.innerHTML=matched.map(m=>{
     const remain=m.remaining??0;
-    const expired=daysLeft(m.payDate)<=0;
+    const expired=(window.daysLeft||function(){return 0})(m.payDate)<=0;
     const empty=remain<=0;
     const statusColor=expired||empty?'#e24b4a':'#204828';
     const statusTxt=expired?'만료':empty?'소진':`${remain}회 남음`;
@@ -2399,7 +2402,7 @@ function qdPick(memberId){
 
   const remain=m.remaining??0;
   const total=isBasic?(m.basicWeeks||3):(m.passType||4);
-  const expired=daysLeft(m.payDate)<=0;
+  const expired=(window.daysLeft||function(){return 0})(m.payDate)<=0;
   const expDate=new Date(m.payDate);expDate.setDate(expDate.getDate()+28);
   const expStr=(expDate.getMonth()+1)+'/'+ expDate.getDate();
 
@@ -2464,7 +2467,7 @@ async function qdConfirm(){
   const cat=document.getElementById('qd-cat').value;
   const isBasic=m.passType==='basic';
   if(isBasic && teacher!=='WANNA' && !cat){
-    toast('수업 분류를 선택해 주세요 (REGULAR / POP-UP)');
+    (window.toast||function(){})('수업 분류를 선택해 주세요 (REGULAR / POP-UP)');
     btn.disabled=false;btn.textContent='차감하기';return;
   }
   const now=new Date();
@@ -2484,10 +2487,10 @@ async function qdConfirm(){
       tx.update(ref,{remaining:cur.remaining-1,history});
     });
     const newRemain=(m.remaining??1)-1;
-    toast(`${m.name}님 차감 완료 — 잔여 ${newRemain}회`);
+    (window.toast||function(){})(`${m.name}님 차감 완료 — 잔여 ${newRemain}회`);
     closeQuickDeduct();
   } catch(e){
-    toast(e.message==='잔여 없음'?`${m.name}님 잔여 횟수가 없습니다`:'차감 중 오류가 발생했습니다. 다시 시도해 주세요.');
+    (window.toast||function(){})(e.message==='잔여 없음'?`${m.name}님 잔여 횟수가 없습니다`:'차감 중 오류가 발생했습니다. 다시 시도해 주세요.');
     btn.disabled=false;
     btn.textContent='차감하기';
     console.error(e);
@@ -2512,11 +2515,11 @@ async function saveEditPay(){
     // onSnapshot이 자동 감지해서 리렌더링
   }catch(e){
     console.error('수정 오류:',e);
-    toast('수정 중 오류가 발생했습니다.');
+    (window.toast||function(){})('수정 중 오류가 발생했습니다.');
     return;
   }
   closeEditPay();
-  toast('결제 수정 완료!');
+  (window.toast||function(){})('결제 수정 완료!');
 }
 document.getElementById('edit-pay-modal').addEventListener('click',function(e){if(e.target===this)closeEditPay();});
 document.getElementById('quick-deduct-modal').addEventListener('click',function(e){if(e.target===this)closeQuickDeduct();});
