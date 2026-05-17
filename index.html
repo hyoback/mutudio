@@ -20,7 +20,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic 
 .lock-btn:hover{opacity:0.85}
 .lock-err{font-size:12px;color:#e24b4a;margin-top:10px;min-height:18px}
 .topbar{background:#fff;border-bottom:1px solid #e8e8e4;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .logo{font-size:15px;font-weight:600;letter-spacing:-0.3px}
 .sync-status{font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
 .sync-ok{background:#e1f5ee;color:#0f6e56}
@@ -369,7 +369,10 @@ tr:hover td{background:#fafaf9}
     <span class="logo"><span style="color:#204828;font-style:italic">mu:tudio</span> academy</span>
     <span class="sync-status sync-ok" id="sync-status">● 연결됨</span>
   </div>
-  <span style="font-size:12px;color:#aaa" id="last-sync"></span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;color:#aaa" id="last-sync"></span>
+    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v14</span>
+  </div>
 </div>
 
 <div class="main-tabs">
@@ -891,13 +894,14 @@ import{getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverT
 const firebaseConfig={apiKey:"AIzaSyBvHYAMLzrVW4YlhBo86zj3SNPxpQxDgcg",authDomain:"mutudio-academy-pass.firebaseapp.com",projectId:"mutudio-academy-pass",storageBucket:"mutudio-academy-pass.firebasestorage.app",messagingSenderId:"403554383066",appId:"1:403554383066:web:5dff822eff8332b14821e3"};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
+window._firestoreDb=db; // Script 8에서 접근 가능하도록
 const colRef=collection(db,"members");
 let members=[],searchQuery='',statsOpen=true,filterMode='all',selectedPass=4;
-const AV=['av0','av1','av2','av3','av4'];
+const AV=['av0','av1','av2','av3','av4'];window.AV=AV;
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));setSyncStatus('ok');setLastSync();render();renderTodayWidget();updatePayStats();},(err)=>{setSyncStatus('err');console.error(err);});
+onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));window.members=members;setSyncStatus('ok');setLastSync();render();renderTodayWidget();updatePayStats();},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
@@ -966,7 +970,7 @@ window.undoDeduct=async(id)=>{
     else history.pop(); // fallback
   }
   setSyncStatus('saving');
-  await updateDoc(doc(db,'members',id),{remaining:m.remaining+1,history});
+  await dbCompat.collection('members').doc(id).update({remaining:m.remaining+1,history});
   toast(`${m.name}님 차감 취소 (잔여 ${m.remaining+1}회)`);
 };
 window.saveMemo=async(id,val)=>{await updateDoc(doc(db,'members',id),{memo:val});};
@@ -1430,7 +1434,7 @@ function loadPay(){
 }
 function savePay(){try{localStorage.setItem(PAY_KEY,JSON.stringify(payRecords));}catch(e){}}
 // Firebase 저장 (비동기)
-async async function savePayToFirebase(record){
+async function savePayToFirebase(record){
   try{
     const {id,...data}=record;
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
@@ -1513,7 +1517,7 @@ function updateDowLabel(dateStr){
 function getClassesForDate(dateStr){
   if(!dateStr)return[];
   const dow=new Date(dateStr+'T00:00:00').getDay();
-  const schedule=TIMETABLE[dow]||[];
+  const schedule=(window.TIMETABLE||{})[dow]||[];
   // 등록된 선생님 목록에 있는 것만 표시
   return schedule;
 }
@@ -1716,10 +1720,10 @@ function addPayRecord(){
 
   // 🎫 티켓 차감 모드
   if(fDeduct){
-    const matched=members.filter(m=>m.name&&m.name===name);
+    const matched=(window.members||[]).filter(m=>m.name&&m.name===name);
     if(!matched.length){
       // 이름 부분일치도 시도
-      const partial=members.filter(m=>m.name&&m.name.includes(name));
+      const partial=(window.members||[]).filter(m=>m.name&&m.name.includes(name));
       if(!partial.length){alert(`"${name}"님은 다회권 미등록 회원입니다.`);return;}
       if(partial.length>1){
         // 동명이인 — 기존 차감 모달로 안내
@@ -1761,7 +1765,7 @@ function addPayRecord(){
       passType:'basic',basicTeacher:teacher,basicWeeks:weeks,
       remaining:weeks,
       status:'reserved',reserveAmt:35000,
-      avIdx:members.length%AV.length,
+      avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
       memo:'예약금 납부',history:[],
     };
     dbCompat.collection('members').add(reserveData).then(()=>{
@@ -1779,7 +1783,7 @@ function addPayRecord(){
       remaining:isProPass?0:fPassType==='basic'
         ?parseInt(document.getElementById('f-pass-basic-weeks').value||3)
         :fPassType,
-      avIdx:members.length%AV.length,
+      avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
       memo:'',history:[],
     };
     if(fPassType==='basic'){
@@ -1808,7 +1812,7 @@ async function deductMemberAndRecord(m,date,note){
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const history=[...(m.history||[]),{date,time:timeStr,teacher:fTeacher,cat:fCat,id:Date.now()}];
   setSyncStatus('saving');
-  await updateDoc(doc(db,'members',m.id),{remaining:m.remaining-1,history});
+  await dbCompat.collection('members').doc(m.id).update({remaining:m.remaining-1,history});
   const newRemain=m.remaining-1;
   clearPayForm();
   toast(`${m.name}님 티켓 차감 완료 — 잔여 ${newRemain}회`);
@@ -1846,7 +1850,7 @@ function updatePayStats(){
 
   // 기존 티켓 차감 — members history 기준
   const deductItems=[];
-  (members||[]).forEach(m=>{
+  (window.members||[]).forEach(m=>{
     (m.history||[]).forEach(h=>{
       if(h.date===today) deductItems.push({name:m.name,teacher:h.teacher||'',time:h.time||''});
     });
@@ -1946,7 +1950,7 @@ function renderDaily(){
   const waterCnt=waterRecs.length;
   const waterAmt=waterRecs.reduce((s,r)=>s+r.amt,0);
   // 티켓 차감 (members history 기준)
-  const deductCnt=(members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>normDate(h.date)===date).length),0);
+  const deductCnt=(window.members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>normDate(h.date)===date).length),0);
   document.getElementById('daily-mini').innerHTML=`
     <div class="mini-stat"><div class="ml">당일 총 매출</div><div class="mv" style="color:#204828">${fmtW(tot)}</div></div>
     <div class="mini-stat"><div class="ml">카드 / 이체 / 현금</div><div class="mv" style="font-size:12px">${fmtW(cd)} / ${fmtW(tf)} / ${fmtW(cs)}</div></div>
@@ -2295,7 +2299,7 @@ function qdSearch(q){
   const list=document.getElementById('qd-list');
   if(!q||q.length<1){list.style.display='none';return;}
   // 다회권 등록 회원만 (members 배열 기준)
-  const matched=members.filter(m=>m.name&&m.name.includes(q));
+  const matched=(window.members||[]).filter(m=>m.name&&m.name.includes(q));
   if(!matched.length){
     list.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#bbb">다회권 미등록 또는 없는 이름</div>';
     list.style.display='block';
@@ -2327,7 +2331,7 @@ function qdHideList(){
 }
 
 function qdPick(memberId){
-  const m=members.find(x=>x.id===memberId);
+  const m=(window.members||[]).find(x=>x.id===memberId);
   if(!m) return;
   qdSelectedMember=m;
   qdHideList();
@@ -2457,8 +2461,8 @@ async function qdConfirm(){
   try{
     // Firebase Transaction으로 race condition 방지
     const {runTransaction, doc:fdoc}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    await runTransaction(db,async(tx)=>{
-      const ref=fdoc(db,'members',m.id);
+    await runTransaction(window._firestoreDb,async(tx)=>{
+      const ref=fdoc(window._firestoreDb,'members',m.id);
       const snap=await tx.get(ref);
       if(!snap.exists()) throw new Error('회원 없음');
       const cur=snap.data();
