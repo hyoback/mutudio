@@ -411,13 +411,15 @@ tr:hover td{background:#fafaf9}
       <div class="pay-stat-val" id="ps-deduct-cnt" style="color:#204828">0</div>
       <div style="font-size:11px;color:#aaa;margin-top:3px" id="ps-deduct-sub">오늘 차감 없음</div>
     </div>
-    <div class="pay-stat" style="border:1.5px dashed #ddd;background:#fafaf9;cursor:default">
-      <div style="font-size:18px;margin-bottom:4px">🤔</div>
-      <div style="font-size:11px;color:#bbb;text-align:center;line-height:1.5">얘들아 여기<br>뭐 넣으면 좋을까?</div>
-    </div>
-    <div class="pay-stat" style="border:1.5px dashed #ddd;background:#fafaf9;cursor:default">
-      <div style="font-size:18px;margin-bottom:4px">🤔</div>
-      <div style="font-size:11px;color:#bbb;text-align:center;line-height:1.5">얘들아 여기<br>뭐 넣으면 좋을까?</div>
+    <div class="pay-stat" style="border:1.5px solid #e8e8e4;background:#fff;cursor:default;grid-column:span 2;padding:12px 16px;position:relative">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:#888;letter-spacing:.04em">📋 인수인계 메모</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:#ccc" id="memo-saved-at"></span>
+          <button onclick="clearHandoverMemo()" style="font-size:10px;padding:2px 8px;font-family:inherit;background:none;border:1px solid #e0e0da;border-radius:6px;color:#bbb;cursor:pointer" onmouseover="this.style.borderColor='#e24b4a';this.style.color='#e24b4a'" onmouseout="this.style.borderColor='#e0e0da';this.style.color='#bbb'">지우기</button>
+        </div>
+      </div>
+      <textarea id="handover-memo" placeholder="다음 근무자에게 전달할 내용을 입력하세요..." style="width:100%;height:72px;border:none;outline:none;resize:none;font-family:inherit;font-size:12px;color:#1a1a1a;background:transparent;line-height:1.6" oninput="scheduleHandoverSave()"></textarea>
     </div>
   </div>
   <div class="pay-nav">
@@ -1476,6 +1478,7 @@ async function init(){
   renderClassChips();
   renderTeacherList();
   updatePayStats();
+  loadHandoverMemo();
   updateDowLabel(today);
   updateDateDow(today);
   populateStatMonths();
@@ -1924,19 +1927,117 @@ function buildPayTable(data){
       <th style="width:68px">Ticket</th><th style="width:82px">금액</th>
       <th style="width:50px">결제</th><th style="width:60px">비고</th><th style="width:70px"></th>
     </tr></thead>
-    <tbody>${data.map(r=>`<tr>
-      <td style="color:#888">${r.date}</td>
-      <td style="color:#aaa;font-size:11px">${r.time||''}</td>
-      <td style="font-weight:500">${r.name}</td>
-      <td style="color:#888;font-size:11px">${r.teacher||'—'}</td>
-      <td style="font-size:11px;color:#555">${r.cat||'—'}</td>
-      <td>${ticketBadge(r.ticket)}</td>
-      <td style="font-weight:500">${fmtW(r.amt)}</td>
-      <td>${payBadge(r.pay)}</td>
-      <td style="color:#aaa;font-size:11px;width:60px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
-      <td style="white-space:nowrap"><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button></td>
-    </tr>`).join('')}</tbody>
+    <tbody>${data.map(r=>{
+      const isTicket=r._isTicket;
+      const isPro=r._isPro;
+      const rowBg=isTicket?'background:#f0f8f2':isPro?'background:#fdf5ff':'';
+      const amtCell=isTicket
+        ?'<span style="font-size:11px;color:#888">차감</span>'
+        :(r.amt>0?`<span style="font-weight:500">${fmtW(r.amt)}</span>`:'<span style="color:#aaa">—</span>');
+      const payCell=isTicket
+        ?'<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#e1f5ee;color:#0f6e56;font-weight:600">티켓</span>'
+        :isPro
+        ?'<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f5f0ff;color:#7b4fb5;font-weight:600">전문반</span>'
+        :payBadge(r.pay);
+      const actionCell=isTicket
+        ?`<button class="del-pay-btn" onclick="cancelTicketDeduct('${r._memberId}',${r._histId},'${r._memberName}',${r._memberRemaining})" style="color:#e24b4a">↩ 취소</button>`
+        :`<button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button>`;
+      return`<tr style="${rowBg}">
+        <td style="color:#888">${r.date}</td>
+        <td style="color:#aaa;font-size:11px">${r.time||''}</td>
+        <td style="font-weight:500">${r.name}</td>
+        <td style="color:#888;font-size:11px">${r.teacher||'—'}</td>
+        <td style="font-size:11px;color:#555">${r.cat||'—'}</td>
+        <td>${isTicket?'<span style="font-size:11px;color:#888">🎫 차감</span>':ticketBadge(r.ticket)}</td>
+        <td>${amtCell}</td>
+        <td>${payCell}</td>
+        <td style="color:#aaa;font-size:11px;width:60px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
+        <td style="white-space:nowrap">${actionCell}</td>
+      </tr>`;
+    }).join('')}</tbody>
   </table>`;
+}
+
+
+async function cancelTicketDeduct(memberId, histId, memberName, currentRemaining){
+  const newRemain = currentRemaining + 1;
+  const confirmed = confirm(
+    `🎫 티켓 차감 취소\n\n` +
+    `${memberName}님의 티켓 차감을 취소하시겠습니까?\n` +
+    `잔여 횟수: ${currentRemaining}회 → ${newRemain}회로 복구됩니다.`
+  );
+  if(!confirmed) return;
+
+  const m = (window.members||[]).find(x=>x.id===memberId);
+  if(!m){ alert('회원 정보를 찾을 수 없습니다.'); return; }
+
+  // history에서 해당 항목 제거
+  const history = (m.history||[]).filter(h=>h.id!==histId);
+
+  try{
+    (window.setSyncStatus||function(){}('saving'));
+    await dbCompat.collection('members').doc(memberId).update({
+      remaining: newRemain,
+      history: history
+    });
+    (window.toast||function(){})(memberName+'님 티켓 차감 취소 완료 (잔여 '+newRemain+'회)');
+    // 일별 보기 새로고침
+    renderDaily();
+  } catch(e){
+    console.error(e);
+    alert('오류가 발생했습니다: ' + e.message);
+  }
+}
+
+
+// ── 인수인계 메모 ──
+let handoverSaveTimer = null;
+
+function scheduleHandoverSave(){
+  clearTimeout(handoverSaveTimer);
+  handoverSaveTimer = setTimeout(saveHandoverMemo, 1200);
+}
+
+async function saveHandoverMemo(){
+  const val = document.getElementById('handover-memo')?.value || '';
+  try{
+    await dbCompat.collection('settings').doc('handover').set({
+      memo: val,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: 'admin'
+    });
+    const now = new Date();
+    const timeStr = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+    const el = document.getElementById('memo-saved-at');
+    if(el) el.textContent = timeStr+' 저장됨';
+  } catch(e){ console.error('메모 저장 오류:', e); }
+}
+
+async function loadHandoverMemo(){
+  try{
+    const doc = await dbCompat.collection('settings').doc('handover').get();
+    if(doc.exists){
+      const data = doc.data();
+      const el = document.getElementById('handover-memo');
+      if(el) el.value = data.memo || '';
+      if(data.updatedAt){
+        const t = data.updatedAt.toDate();
+        const dateStr = (t.getMonth()+1)+'/'+t.getDate();
+        const timeStr = t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+        const savedEl = document.getElementById('memo-saved-at');
+        if(savedEl) savedEl.textContent = dateStr+' '+timeStr+' 저장됨';
+      }
+    }
+  } catch(e){ console.error('메모 불러오기 오류:', e); }
+}
+
+async function clearHandoverMemo(){
+  if(!confirm('인수인계 메모를 지우시겠습니까?')) return;
+  const el = document.getElementById('handover-memo');
+  if(el) el.value = '';
+  await saveHandoverMemo();
+  const savedEl = document.getElementById('memo-saved-at');
+  if(savedEl) savedEl.textContent = '';
 }
 
 function delPayRecord(id){
@@ -1974,7 +2075,41 @@ function renderDaily(){
     <div class="mini-stat"><div class="ml">티켓 차감</div><div class="mv" style="color:#204828">${deductCnt}회</div></div>
     <div class="mini-stat"><div class="ml">물 💧</div><div class="mv" style="color:#2176ae">${waterCnt}개 · ${fmtW(waterAmt)}</div></div>`;
   document.getElementById('daily-mini').style.gridTemplateColumns='repeat(5,minmax(0,1fr))';
-  document.getElementById('daily-tbl').innerHTML=buildPayTable(d);
+  // 티켓 차감 내역 → 가상 레코드로 변환
+  const ticketRows=[];
+  (window.members||[]).forEach(m=>{
+    (m.history||[]).filter(h=>normDate(h.date)===date).forEach(h=>{
+      ticketRows.push({
+        id:'hist-'+h.id,
+        date:h.date,
+        time:h.time||'',
+        name:m.name,
+        teacher:h.teacher||'',
+        cat:h.cat||'',
+        ticket:'🎫 티켓 차감',
+        amt:0,
+        pay:'다회권',
+        note:'',
+        _isTicket:true,
+        _histId:h.id,
+        _memberId:m.id,
+        _memberRemaining:m.remaining,
+        _memberName:m.name
+      });
+    });
+  });
+  // 전문반 내역 (payRecords에서 ticket==='전문반' 인 것)
+  const proRows=d.filter(r=>r.ticket==='전문반').map(r=>({...r,_isPro:true}));
+  // 일반 결제 (전문반 제외)
+  const normalRows=d.filter(r=>r.ticket!=='전문반');
+  // 합쳐서 시간 역순 정렬
+  const allRows=[...normalRows,...proRows,...ticketRows].sort((a,b)=>{
+    if(!a.time&&!b.time) return 0;
+    if(!a.time) return 1;
+    if(!b.time) return -1;
+    return b.time.localeCompare(a.time);
+  });
+  document.getElementById('daily-tbl').innerHTML=buildPayTable(allRows);
   renderDailyChart(d);
   renderDailyClosing(d,date);
 }
