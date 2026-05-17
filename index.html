@@ -332,6 +332,19 @@ tr:hover td{background:#fafaf9}
 .cm-box{flex:1;background:#fff;border:1px solid #e5e5e3;border-radius:8px;padding:10px;text-align:center}
 .cm-label{font-size:11px;color:#888;margin-bottom:4px}
 .cm-val{font-size:16px;font-weight:600}
+.closing-teacher-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0ee;cursor:pointer;user-select:none;transition:background .1s;border-radius:6px;margin:0 -6px;padding-left:6px;padding-right:6px}
+.closing-teacher-row:hover{background:#f0f0ec}
+.closing-teacher-arrow{font-size:10px;color:#ccc;transition:transform .2s;margin-left:6px;flex-shrink:0}
+.closing-teacher-arrow.open{transform:rotate(180deg)}
+.closing-student-list{display:none;padding:6px 0 4px 0;border-bottom:1px solid #f0f0ee}
+.closing-student-list.open{display:block}
+.closing-student-item{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:12px;color:#555;border-radius:6px}
+.closing-student-item:hover{background:#f5f5f2}
+.closing-student-ticket{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600}
+.cst-card{background:#faeeda;color:#854f0b}
+.cst-transfer{background:#eeedfe;color:#4527a0}
+.cst-cash{background:#e1f5ee;color:#0f6e56}
+.cst-ticket{background:#f0f0f0;color:#888}
 
 /* 수업 선택 팝업 (다회권 차감용) */
 .deduct-class-modal{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:none;align-items:center;justify-content:center}
@@ -2513,25 +2526,88 @@ function renderDailyClosing(recs, date){
   const wrap=document.getElementById('daily-closing');
   if(!wrap) return;
   if(!recs.length){wrap.innerHTML='';return;}
-  const total=recs.reduce((s,r)=>s+r.amt,0);
-  const card=recs.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
-  const tf=recs.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
-  const cash=recs.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
-  const cnt=recs.length;
-  const cats=['정규','팝업','비기너','베이직','K-POP','워크샵'];
-  const catRows=cats.map(c=>{
-    const cr=recs.filter(r=>r.cat===c);
-    if(!cr.length) return '';
-    return`<div class="closing-row">
-      <span class="closing-label">${{정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'}[c]||c}</span>
-      <span class="closing-val">${cr.length}건 · ${fmtW(cr.reduce((s,r)=>s+r.amt,0))}</span>
-    </div>`;
-  }).filter(Boolean).join('');
+
+  // 물 분리
+  const waterRecs=recs.filter(r=>r.name==='물'||(r.amt===1000&&r.name==='물'));
+  const payRecs=recs.filter(r=>r.name!=='물');
+
+  // 결제 금액 합계 (물 제외)
+  const total=payRecs.reduce((s,r)=>s+r.amt,0);
+  const card=payRecs.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
+  const tf=payRecs.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
+  const cash=payRecs.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
+
+  // 티켓 차감 건수 (payRecords 중 다회권 차감 or members history)
+  const ticketRecs=payRecs.filter(r=>r.ticket==='다회권 차감'||r.pay==='다회권');
+  const deductCnt=(window.members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>h.date===date).length),0);
+
+  // 결제 수강생 수 (이름 기준 중복 제거, 물/다회권 제외)
+  const paidRecs=payRecs.filter(r=>r.pay!=='다회권'&&r.amt>0);
+  const uniqueStudents=new Set(paidRecs.map(r=>r.name)).size;
+
+  // 선생님별 집계 (물·다회권 제외)
+  const teacherMap={};
+  payRecs.filter(r=>r.teacher&&r.pay!=='다회권').forEach(r=>{
+    if(!teacherMap[r.teacher]) teacherMap[r.teacher]={cnt:0,amt:0,cats:new Set()};
+    teacherMap[r.teacher].cnt++;
+    teacherMap[r.teacher].amt+=r.amt;
+    if(r.cat) teacherMap[r.teacher].cats.add(r.cat);
+  });
+  const CAT_LABEL_MAP={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
+  const teacherRows=Object.entries(teacherMap)
+    .sort((a,b)=>b[1].cnt-a[1].cnt)
+    .map(([t,v],idx)=>{
+      const catLabel=[...v.cats].map(c=>CAT_LABEL_MAP[c]||c).join(', ');
+      const tid='ct-'+idx+'-'+date.replace(/-/g,'');
+      // 수강생 목록 (결제 기록 기준)
+      const students=payRecs.filter(r=>r.teacher===t&&r.pay!=='다회권');
+      const studentItems=students.map(r=>{
+        const payLabel={'카드':'카드','이체':'이체','현금':'현금','다회권':'티켓'}[r.pay]||r.pay;
+        const payClass={'카드':'cst-card','이체':'cst-transfer','현금':'cst-cash','다회권':'cst-ticket'}[r.pay]||'cst-ticket';
+        const isPro=r.ticket==='전문반';
+        return`<div class="closing-student-item">
+          <span style="flex:1;font-weight:500">${r.name}</span>
+          ${isPro?'<span class="closing-student-ticket" style="background:#f5f0ff;color:#7b4fb5">전문반</span>':''}
+          ${!isPro&&r.amt>0?`<span style="font-size:11px;color:#aaa">${fmtW(r.amt)}</span>`:''}
+          ${!isPro?`<span class="closing-student-ticket ${payClass}">${payLabel}</span>`:''}
+        </div>`;
+      }).join('');
+      // 티켓 차감 수강생 (members history에서)
+      const ticketStudents=(window.members||[])
+        .filter(m=>(m.history||[]).some(h=>h.date===date&&h.teacher===t))
+        .map(m=>{
+          const h=(m.history||[]).filter(x=>x.date===date&&x.teacher===t);
+          return h.map(()=>`<div class="closing-student-item">
+            <span style="flex:1;font-weight:500">${m.name}</span>
+            <span class="closing-student-ticket cst-ticket">🎫 티켓</span>
+          </div>`).join('');
+        }).join('');
+      return`<div>
+        <div class="closing-teacher-row" onclick="(function(el){
+          const list=el.nextElementSibling;
+          const arrow=el.querySelector('.closing-teacher-arrow');
+          const open=list.classList.toggle('open');
+          arrow.classList.toggle('open',open);
+        })(this)">
+          <span class="closing-label" style="font-weight:600">${t}<span style="font-size:10px;font-weight:400;color:#aaa;margin-left:5px">${catLabel}</span></span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span class="closing-val">${v.cnt}명 · ${fmtW(v.amt)}</span>
+            <span class="closing-teacher-arrow">▼</span>
+          </span>
+        </div>
+        <div class="closing-student-list" id="${tid}">
+          ${studentItems}${ticketStudents||''}
+          ${!studentItems&&!ticketStudents?'<div style="font-size:11px;color:#bbb;padding:4px 6px">수강생 정보 없음</div>':''}
+        </div>
+      </div>`;
+    }).join('');
+
   // 결제수단 비율바
-  const cardPct=total>0?Math.round(card/total*100):0;
-  const tfPct=total>0?Math.round(tf/total*100):0;
-  const cashPct=total>0?100-cardPct-tfPct:0;
-  const ratioBar=total>0?`<div style="margin-top:12px">
+  const grandTotal=total+(waterRecs.reduce((s,r)=>s+r.amt,0));
+  const cardPct=grandTotal>0?Math.round(card/grandTotal*100):0;
+  const tfPct=grandTotal>0?Math.round(tf/grandTotal*100):0;
+  const cashPct=grandTotal>0?100-cardPct-tfPct:0;
+  const ratioBar=grandTotal>0?`<div style="margin-top:12px">
     <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px">
       ${card>0?`<div style="width:${cardPct}%;background:#854f0b;border-radius:4px 0 0 4px"></div>`:''}
       ${tf>0?`<div style="width:${tfPct}%;background:#4527a0"></div>`:''}
@@ -2543,16 +2619,36 @@ function renderDailyClosing(recs, date){
       ${cash>0?`<span style="font-size:11px;color:#0f6e56">현금 ${cashPct}%</span>`:''}
     </div>
   </div>`:'';
+
   wrap.innerHTML=`<div class="closing-wrap">
     <div class="closing-title">📋 ${date} 마감 요약</div>
-    ${catRows}
+
+    ${teacherRows||'<div class="closing-row"><span class="closing-label" style="color:#aaa">결제 내역 없음</span></div>'}
+
+    <div style="border-top:1px solid #f0f0ee;margin:8px 0"></div>
+
     <div class="closing-row">
-      <span class="closing-label">총 건수</span>
-      <span class="closing-val">${cnt}건</span>
+      <span class="closing-label">총 수강생</span>
+      <span class="closing-val">${uniqueStudents}명</span>
     </div>
     <div class="closing-row">
-      <span class="closing-label">총 매출</span>
-      <span class="closing-val">${fmtW(total)}</span>
+      <span class="closing-label">결제 건수</span>
+      <span class="closing-val">${paidRecs.length}건</span>
+    </div>
+    <div class="closing-row">
+      <span class="closing-label">🎫 티켓 차감</span>
+      <span class="closing-val">${deductCnt}회</span>
+    </div>
+    ${waterRecs.length>0?`<div class="closing-row">
+      <span class="closing-label">💧 물</span>
+      <span class="closing-val">${waterRecs.length}개 · ${fmtW(waterRecs.reduce((s,r)=>s+r.amt,0))}</span>
+    </div>`:''}
+
+    <div style="border-top:1px solid #f0f0ee;margin:8px 0"></div>
+
+    <div class="closing-row" style="font-size:15px">
+      <span class="closing-label" style="font-weight:700;color:#1a1a1a">총 매출</span>
+      <span class="closing-val" style="font-weight:700;color:#204828">${fmtW(total)}</span>
     </div>
     <div class="closing-method">
       <div class="cm-box"><div class="cm-label">카드</div><div class="cm-val">${fmtW(card)}</div></div>
