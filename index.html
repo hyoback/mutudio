@@ -1430,7 +1430,7 @@ function loadPay(){
 }
 function savePay(){try{localStorage.setItem(PAY_KEY,JSON.stringify(payRecords));}catch(e){}}
 // Firebase 저장 (비동기)
-async function savePayToFirebase(record){
+async async function savePayToFirebase(record){
   try{
     const {id,...data}=record;
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
@@ -1928,8 +1928,15 @@ function delPayRecord(id){
 
 function renderDaily(){
   const date=document.getElementById('fd-date').value;
+  if(!date) return;
   const cat=document.getElementById('fd-cat').value;
-  let d=payRecords.filter(r=>r.date===date&&(!cat||r.cat===cat));
+  // r.date가 Firebase Timestamp이거나 포맷이 다를 수 있어서 문자열로 정규화 후 비교
+  function normDate(v){
+    if(!v) return '';
+    if(typeof v==='object'&&v.toDate) return v.toDate().toISOString().split('T')[0];
+    return String(v).slice(0,10);
+  }
+  let d=payRecords.filter(r=>normDate(r.date)===date&&(!cat||r.cat===cat));
   const waterRecs=d.filter(r=>r.name==='물');
   const payRecs=d.filter(r=>r.name!=='물');
   const tot=d.reduce((s,r)=>s+r.amt,0);
@@ -1939,7 +1946,7 @@ function renderDaily(){
   const waterCnt=waterRecs.length;
   const waterAmt=waterRecs.reduce((s,r)=>s+r.amt,0);
   // 티켓 차감 (members history 기준)
-  const deductCnt=(members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>h.date===date).length),0);
+  const deductCnt=(members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>normDate(h.date)===date).length),0);
   document.getElementById('daily-mini').innerHTML=`
     <div class="mini-stat"><div class="ml">당일 총 매출</div><div class="mv" style="color:#204828">${fmtW(tot)}</div></div>
     <div class="mini-stat"><div class="ml">카드 / 이체 / 현금</div><div class="mv" style="font-size:12px">${fmtW(cd)} / ${fmtW(tf)} / ${fmtW(cs)}</div></div>
