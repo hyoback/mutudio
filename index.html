@@ -2683,13 +2683,22 @@ function renderDailyClosing(recs, date){
   const paidRecs=payRecs.filter(r=>r.pay!=='다회권'&&r.amt>0);
   const uniqueStudents=new Set(paidRecs.map(r=>r.name)).size;
 
-  // 선생님별 집계 (물·다회권 제외)
+  // 선생님별 집계 (물·다회권 제외) + 티켓 차감 수강생 포함
   const teacherMap={};
+  // 일반 결제
   payRecs.filter(r=>r.teacher&&r.pay!=='다회권').forEach(r=>{
     if(!teacherMap[r.teacher]) teacherMap[r.teacher]={cnt:0,amt:0,cats:new Set()};
     teacherMap[r.teacher].cnt++;
     teacherMap[r.teacher].amt+=r.amt;
     if(r.cat) teacherMap[r.teacher].cats.add(r.cat);
+  });
+  // 티켓 차감 수강생 (members history 기준)
+  (window.members||[]).forEach(m=>{
+    (m.history||[]).filter(h=>h.date===date&&h.teacher).forEach(h=>{
+      if(!teacherMap[h.teacher]) teacherMap[h.teacher]={cnt:0,amt:0,cats:new Set()};
+      teacherMap[h.teacher].cnt++;
+      if(h.cat) teacherMap[h.teacher].cats.add(h.cat);
+    });
   });
   const CAT_LABEL_MAP={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
   const teacherRows=Object.entries(teacherMap)
