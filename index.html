@@ -1495,7 +1495,7 @@ const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDU
 
 let payRecords=[],payTeachers=[];
 Object.defineProperty(window,'payRecords',{get:()=>payRecords,set:(v)=>{payRecords=v;}});
-let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0,fReserve=false;
+let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='카드',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0,fReserve=false;
 let showAllTeachers=false,selMonthPay=new Date().toISOString().slice(0,7),curPayTab='input';
 
 function loadPay(){
@@ -1544,6 +1544,9 @@ async function init(){
   loadPay();
   const today=new Date().toISOString().split('T')[0];
   fDate=today;
+  // 결제방법 기본값: 카드
+  fPay='카드';
+  document.getElementById('pb-card').className='chip on-card';
   document.getElementById('f-date').value=today;
   document.getElementById('fd-date').value=today;
   renderClassChips();
@@ -1782,10 +1785,16 @@ function setAmt(n){
 }
 function addAmtNoPass(n){setAmt(n);}
 function addWater(){
-  const wasWaterOnly=(fAmt===0)||fWaterOnly;
-  fAmt+=1000; fWater=true;
-  fWaterOnly=wasWaterOnly&&!fPassType&&!fReserve;
-  updateAmtDisplay();
+  // 물은 항상 별도 레코드로 즉시 저장 — 티켓 결제와 합산하지 않음
+  const payMethod=fPay||'카드'; // 결제수단 미선택 시 카드 기본값
+  const now=new Date();
+  const date=document.getElementById('f-date').value||now.toISOString().split('T')[0];
+  const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const rec={id:Date.now(),date,time:timeStr,name:'물',teacher:fTeacher||'',cat:fCat||'',ticket:'물',amt:1000,pay:payMethod,note:'',water:true};
+  savePayToFirebase(rec);
+  savePay();
+  if(window.updatePayStats) window.updatePayStats();
+  (window.toast||function(){})('물 💧 추가됨 (+1,000원)');
 }
 function addAmt(n){fAmt+=n;fWaterOnly=false;updateAmtDisplay();}
 function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom').value)||0;if(v>0){fAmt=v;fWater=false;fWaterOnly=false;fPassType=0;fReserve=false;clearPassReg();updateAmtDisplay();document.getElementById('f-amt-custom').value=''}}
@@ -1802,9 +1811,7 @@ async function addPayRecord(){
   const date=document.getElementById('f-date').value;
   const note=document.getElementById('f-note').value.trim();
   const isPro=fTicket==='전문반';
-  // 물만 담겨있을 때만 이름 없이 허용
-  const isWaterOnly=fWater&&fWaterOnly&&!nameInput;
-  const name=isWaterOnly?'물':nameInput;
+  const name=nameInput;
 
   if(!name){alert('수강생 이름을 입력해주세요');return;}
 
@@ -1829,7 +1836,7 @@ async function addPayRecord(){
   }
 
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
-  if(!isPro&&!isWaterOnly&&!fPay){alert('결제 방법을 선택해주세요');return;}
+  if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
 
   // 다회권/PRO 등록 필요한데 전화번호 없으면 저장 전에 막기
   if(fPassType&&name){
@@ -1888,7 +1895,7 @@ async function addPayRecord(){
   }
 
   clearPayForm();
-  const toastMsg=isWaterOnly?'물 결제 완료! 💧':(name+'님 결제 등록 완료!');
+  const toastMsg=name+'님 결제 등록 완료!';
   (window.toast||function(){})(toastMsg);
   const cntEl=document.getElementById('ps-cnt');
   if(cntEl){cntEl.classList.remove('stat-flash');void cntEl.offsetWidth;cntEl.classList.add('stat-flash');setTimeout(()=>cntEl.classList.remove('stat-flash'),700);}
@@ -1914,17 +1921,22 @@ function clearPayForm(){
   document.getElementById('f-name').value='';
   document.getElementById('f-note').value='';
   document.getElementById('f-amt-custom').value='';
-  fTeacher='';fCat='';fTicket='';fPay='';fAmt=0;fWater=false;fWaterOnly=false;fDeduct=false;fPassType=0;showAllTeachers=false;
+  fTeacher='';fCat='';fTicket='';fPay='카드';fAmt=0;fWater=false;fWaterOnly=false;fDeduct=false;fPassType=0;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
   const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
   const dc=document.getElementById('deduct-chip');if(dc){dc.dataset.on='0';dc.style.background='';dc.style.borderColor='#204828';dc.style.color='#204828';dc.style.fontWeight='';}
   clearPassReg();
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
-  ['card','transfer','cash'].forEach(k=>document.getElementById('pb-'+k).className='chip');
+  // 결제방법: 카드 기본 선택 상태로 표시
+  document.getElementById('pb-card').className='chip on-card';
+  document.getElementById('pb-transfer').className='chip';
+  document.getElementById('pb-cash').className='chip';
   updateAmtDisplay();renderClassChips();
 }
 
 function updatePayStats(){
+  // 없는 요소에 접근해도 오류 안 나도록 안전 처리
+  const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
   const today=new Date().toISOString().split('T')[0];
   const todayRecs=payRecords.filter(r=>r.date===today);
 
@@ -1955,22 +1967,22 @@ function updatePayStats(){
   const totalCnt=todayRecs.length;
 
   // 카드 1: 일반 결제
-  document.getElementById('ps-pay-cnt').textContent=payRecs.length+'건';
-  document.getElementById('ps-pay-method').textContent=`카드 ${cd} · 이체 ${tf} · 현금 ${cs}`;
+  setText('ps-pay-cnt', payRecs.length+'건');
+  setText('ps-pay-method', `카드 ${cd} · 이체 ${tf} · 현금 ${cs}`);
 
   // 카드 2: 기존 티켓 차감
-  document.getElementById('ps-deduct-cnt').textContent=deductItems.length+'회';
-  document.getElementById('ps-deduct-sub').textContent=deductItems.length
+  setText('ps-deduct-cnt', deductItems.length+'회');
+  setText('ps-deduct-sub', deductItems.length
     ? deductItems.slice(-2).map(d=>d.name+(d.teacher?' ('+d.teacher+')':'')).join(', ')+(deductItems.length>2?' 외':'')
-    : '오늘 차감 없음';
+    : '오늘 차감 없음');
 
-  // 카드 3: 물
-  document.getElementById('ps-water-cnt').textContent=waterCnt+'개';
-  document.getElementById('ps-water-amt').textContent=fmtW(waterAmt);
+  // 카드 3: 물 (요소가 있을 때만)
+  setText('ps-water-cnt', waterCnt+'개');
+  setText('ps-water-amt', fmtW(waterAmt));
 
-  // 카드 4: 총 매출
-  document.getElementById('ps-cnt').textContent=fmtW(totalAmt);
-  document.getElementById('ps-total-cnt').textContent=`결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`;
+  // 카드 4: 총 매출 (요소가 있을 때만)
+  setText('ps-cnt', fmtW(totalAmt));
+  setText('ps-total-cnt', `결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`);
 }
 window.updatePayStats=updatePayStats;
 
@@ -2186,8 +2198,8 @@ function renderDaily(){
   });
   // 전문반 내역 (payRecords에서 ticket==='전문반' 인 것)
   const proRows=d.filter(r=>r.ticket==='전문반').map(r=>({...r,_isPro:true}));
-  // 일반 결제 (전문반 제외)
-  const normalRows=d.filter(r=>r.ticket!=='전문반');
+  // 일반 결제 (전문반·물 제외 — 물은 마감 요약에서 별도 집계)
+  const normalRows=d.filter(r=>r.ticket!=='전문반'&&r.name!=='물'&&!r.water);
   // 합쳐서 시간 역순 정렬
   const allRows=[...normalRows,...proRows,...ticketRows].sort((a,b)=>{
     if(!a.time&&!b.time) return 0;
