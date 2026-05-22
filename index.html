@@ -496,7 +496,7 @@ tr:hover td{background:#fafaf9}
             <div id="pass-reg-wrap" style="display:none;margin-top:10px;padding:12px;background:#f0f8f2;border-radius:10px;border:1px solid #a8d5b0">
               <div id="pass-reg-label" style="font-size:12px;font-weight:600;color:#204828;margin-bottom:8px">📋 베이직 월등록</div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input type="tel" id="f-pass-phone" class="pay-input" placeholder="전화번호 — 신규 등록 시 필수" style="flex:1;min-width:160px" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)">
+                <input type="tel" id="f-pass-phone" class="pay-input" placeholder="전화번호 (010-0000-0000)" style="flex:1;min-width:160px" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)">
                 <div id="pass-basic-extra" style="display:none;flex:1;min-width:140px">
                   <select id="f-pass-basic-teacher" class="pay-input" style="width:100%">
                     <option value="">강사 선택</option>
@@ -517,7 +517,7 @@ tr:hover td{background:#fafaf9}
             <div id="reserve-reg-wrap" style="display:none;margin-top:10px;padding:12px;background:#f5f0ff;border-radius:10px;border:1px solid #c4a8e8">
               <div style="font-size:12px;font-weight:600;color:#7b4fb5;margin-bottom:8px">📌 예약금 등록 — 35,000원</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input type="tel" id="f-reserve-phone" class="pay-input" placeholder="전화번호 — 신규 등록 시 필수" style="flex:1;min-width:160px" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)">
+                <input type="tel" id="f-reserve-phone" class="pay-input" placeholder="전화번호 (010-0000-0000)" style="flex:1;min-width:160px" inputmode="numeric" maxlength="13" oninput="fmtPhone(this)">
                 <select id="f-reserve-teacher" class="pay-input" style="flex:1;min-width:130px">
                   <option value="">강사 선택 (베이직)</option>
                   <option>WANNA</option><option>EVE</option><option>YENI CHO</option><option>HYOS</option>
@@ -576,19 +576,6 @@ tr:hover td{background:#fafaf9}
 
   <!-- 월별 보기 -->
   <div id="ptab-monthly" style="display:none">
-    <!-- 수강생 검색 -->
-    <div class="pay-panel" style="margin-bottom:12px">
-      <div class="pay-panel-hd">수강생 수업 이력 검색</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="autocomplete-wrap" style="flex:1">
-          <input type="text" id="student-search-input" class="pay-input" placeholder="수강생 이름 검색..." autocomplete="off"
-            oninput="searchStudentHistory(this.value)" onblur="setTimeout(()=>hideStudentAc(),200)">
-          <div class="autocomplete-list" id="student-ac-list"></div>
-        </div>
-        <button onclick="clearStudentSearch()" style="font-size:12px;padding:7px 14px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:8px;color:#888;cursor:pointer">초기화</button>
-      </div>
-      <div id="student-history-result" style="margin-top:12px"></div>
-    </div>
     <div class="pay-panel">
       <div class="pay-panel-hd">월별 보기</div>
       <select id="fm-cat" class="pay-input" style="width:120px;font-size:12px;padding:6px 9px;margin-bottom:4px" onchange="renderMonthly()">
@@ -1153,14 +1140,6 @@ window.renewPass=(id)=>{
       </div>
       <button class="btn-save" style="width:100%;margin-top:8px" onclick="confirmRenewBasic('${id}')">Basic Monthly로 재결제</button>
     </div>
-    <div style="margin-top:12px">
-      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">결제 방법</div>
-      <div style="display:flex;gap:6px" id="renew-pay-btns">
-        <button style="flex:1;padding:7px 4px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666" id="rpb-card" onclick="selectRenewPay('카드',this)">카드</button>
-        <button style="flex:1;padding:7px 4px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666" id="rpb-transfer" onclick="selectRenewPay('이체',this)">이체</button>
-        <button style="flex:1;padding:7px 4px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666" id="rpb-cash" onclick="selectRenewPay('현금',this)">현금</button>
-      </div>
-    </div>
     <div class="modal-btns" style="margin-top:14px">
       <button class="btn-cancel" onclick="document.getElementById('renew-modal').remove()">취소</button>
     </div>
@@ -1241,14 +1220,14 @@ window.confirmRenewBasic=async(id)=>{
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeEdit();});
 function render(){
-  const total=members.length,active=members.filter(m=>daysLeft(m.payDate)>0&&m.remaining>0).length,expired=members.filter(m=>daysLeft(m.payDate)<0||m.remaining<=0).length;
+  const total=members.length,active=members.filter(m=>daysLeft(m.payDate)>0&&m.remaining>0).length,expired=members.filter(m=>daysLeft(m.payDate)<=0||m.remaining<=0).length;
   document.getElementById('stats').innerHTML=`<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 수강생</div></div><div class="stat-card"><div class="stat-num" style="color:#1d9e75">${active}</div><div class="stat-label">유효 수강권</div></div><div class="stat-card"><div class="stat-num" style="color:#e24b4a">${expired}</div><div class="stat-label">만료·소진</div></div>`;
   // 필터 버튼 카운트 업데이트
   const cnt4=members.filter(m=>m.passType===4&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cnt8=members.filter(m=>m.passType===8&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cntBasic=members.filter(m=>m.passType==='basic'&&m.status!=='reserved'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cntReserved=members.filter(m=>m.status==='reserved').length;
-  const cntExp=members.filter(m=>m.status!=='reserved'&&(daysLeft(m.payDate)<0||m.remaining<=0)).length;
+  const cntExp=members.filter(m=>m.status!=='reserved'&&(daysLeft(m.payDate)<=0||m.remaining<=0)).length;
   const cntAll=members.length;
   const fb=document.getElementById('filt-all');if(fb)fb.textContent='전체 수강생 ('+cntAll+')';
   const f4=document.getElementById('filt-4');if(f4)f4.textContent='4 Tickets ('+cnt4+')';
@@ -1258,7 +1237,7 @@ function render(){
   const fe=document.getElementById('filt-exp');if(fe)fe.textContent='만료·소진 ('+cntExp+')';
   let filtered=members.filter(m=>{
     if(filterMode==='expired'){
-      return m.status!=='reserved'&&(daysLeft(m.payDate)<0||m.remaining<=0);
+      return m.status!=='reserved'&&(daysLeft(m.payDate)<=0||m.remaining<=0);
     } else if(filterMode==='reserved'){
       return m.status==='reserved';
     } else if(filterMode==='basic'){
@@ -1498,7 +1477,6 @@ const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDU
 let payRecords=[],payTeachers=[];
 Object.defineProperty(window,'payRecords',{get:()=>payRecords,set:(v)=>{payRecords=v;}});
 let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0,fReserve=false;
-let fPayDefault='카드'; // 결제방법 기본값
 let showAllTeachers=false,selMonthPay=new Date().toISOString().slice(0,7),curPayTab='input';
 
 function loadPay(){
@@ -1525,7 +1503,6 @@ function loadPay(){
 function savePay(){try{localStorage.setItem(PAY_KEY,JSON.stringify(payRecords));}catch(e){}}
 window.savePay=savePay;
 // Firebase 저장 (비동기)
-// Firebase 저장
 async function savePayToFirebase(record){
   try{
     const {id,...data}=record;
@@ -1633,7 +1610,7 @@ function renderClassChips(){
   const toM=t=>{if(!t)return 9999;const p=t.split(':').map(Number);return p[0]*60+p[1];};
   const fixed=all.filter(c=>FIXED.includes(c.cat)).sort((a,b)=>toM(a.time)-toM(b.time));
   // tempClasses 포함 (팝업 row에 추가, ✕ 버튼 있음)
-  const tempMapped=(window.tempClasses||[]).map((c,i)=>({...c,isTemp:true,tempIdx:i}));
+  const tempMapped=(typeof tempClasses!=='undefined'?tempClasses:[]).map((c,i)=>({...c,isTemp:true,tempIdx:i}));
   const popup=[...all.filter(c=>!FIXED.includes(c.cat)),...tempMapped].sort((a,b)=>toM(a.time)-toM(b.time));
   function chip(c){
     const col=CAT_COLOR[c.cat]||"blue";
@@ -1796,7 +1773,7 @@ function addWater(){
   savePayToFirebase(rec);
   savePay();
   if(window.updatePayStats) window.updatePayStats();
-  (window.toast||function(){})('물 💧 추가됨 (+1,000원)');
+  if(window.toast) window.toast('물 💧 추가됨 (+1,000원)');
 }
 function addAmt(n){fAmt+=n;fWaterOnly=false;updateAmtDisplay();}
 function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom').value)||0;if(v>0){fAmt=v;fWater=false;fWaterOnly=false;fPassType=0;fReserve=false;clearPassReg();updateAmtDisplay();document.getElementById('f-amt-custom').value=''}}
@@ -1967,16 +1944,14 @@ function updatePayStats(){
   const totalCnt=todayRecs.length;
 
   // 카드 1: 일반 결제
-  setText('ps-pay-cnt', payRecs.length+'건');
-  setText('ps-pay-method', `카드 ${cd} · 이체 ${tf} · 현금 ${cs}`);
-  setText('ps-deduct-cnt', deductItems.length+'회');
-  setText('ps-deduct-sub', deductItems.length
-    ? deductItems.slice(-2).map(d=>d.name+(d.teacher?' ('+d.teacher+')':'')).join(', ')+(deductItems.length>2?' 외':'')
-    : '오늘 차감 없음');
-  setText('ps-water-cnt', waterCnt+'개');
-  setText('ps-water-amt', fmtW(waterAmt));
-  setText('ps-cnt', fmtW(totalAmt));
-  setText('ps-total-cnt', `결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`);
+  setText('ps-pay-cnt',payRecs.length+'건');
+  setText('ps-pay-method',`카드 ${cd} · 이체 ${tf} · 현금 ${cs}`);
+  setText('ps-deduct-cnt',deductItems.length+'회');
+  setText('ps-deduct-sub',deductItems.length?deductItems.slice(-2).map(d=>d.name+(d.teacher?' ('+d.teacher+')':'')).join(', ')+(deductItems.length>2?' 외':''):'오늘 차감 없음');
+  setText('ps-water-cnt',waterCnt+'개');
+  setText('ps-water-amt',fmtW(waterAmt));
+  setText('ps-cnt',fmtW(totalAmt));
+  setText('ps-total-cnt',`결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`);
 }
 
 window.updatePayStats=updatePayStats;
@@ -1994,7 +1969,7 @@ window.addEventListener('scroll',updateTopBtnVisibility,{passive:true});
 
 function switchPayTab(id,btn){
   curPayTab=id;
-  window.curPayTab=id; // scroll 이벤트에서 참조하는 window.curPayTab 동기화
+  window.curPayTab=id;
   document.querySelectorAll('.pay-nav-btn').forEach(b=>b.classList.remove('on'));
   if(btn) btn.classList.add('on');
   ['input','daily','monthly','stats'].forEach(t=>{
@@ -2049,24 +2024,6 @@ function buildPayTable(data){
   </table>`;
 }
 
-
-// 물 1개 취소 — 가장 최근 물 레코드 삭제
-async function cancelLastWater(){
-  const date=document.getElementById('fd-date').value;
-  if(!date) return;
-  function normDate(v){
-    if(!v) return '';
-    if(typeof v==='object'&&v.toDate) return v.toDate().toISOString().split('T')[0];
-    return String(v).slice(0,10);
-  }
-  const waterRecs=payRecords.filter(r=>normDate(r.date)===date&&(r.water===true||r.name==='물'));
-  if(!waterRecs.length){(window.toast||function(){})('취소할 물 내역이 없습니다.');return;}
-  // 가장 최근 1건 (시간 역순)
-  const last=waterRecs.sort((a,b)=>(b.time||'').localeCompare(a.time||''))[0];
-  const fbId=last.firebaseId||last.id||String(last.id);
-  await deletePayFromFirebase(fbId);
-  (window.toast||function(){})('물 1개 취소됐습니다 💧');
-}
 
 async function cancelTicketDeduct(memberId, histId, memberName, currentRemaining){
   const newRemain = currentRemaining + 1;
@@ -2149,6 +2106,18 @@ async function clearHandoverMemo(){
   if(savedEl) savedEl.textContent = '';
 }
 
+async function cancelLastWater(){
+  const date=document.getElementById('fd-date').value;
+  if(!date) return;
+  function normDateW(v){if(!v)return '';if(typeof v==='object'&&v.toDate)return v.toDate().toISOString().split('T')[0];return String(v).slice(0,10);}
+  const waterRecs=payRecords.filter(r=>normDateW(r.date)===date&&(r.water===true||r.name==='물'));
+  if(!waterRecs.length){if(window.toast)window.toast('취소할 물 내역이 없습니다.');return;}
+  const last=waterRecs.sort((a,b)=>(b.time||'').localeCompare(a.time||''))[0];
+  const fbId=last.firebaseId||String(last.id);
+  await deletePayFromFirebase(fbId);
+  if(window.toast)window.toast('물 1개 취소됐습니다 💧');
+}
+
 function delPayRecord(id){
   if(!confirm('삭제할까요?'))return;
   const rec=payRecords.find(r=>r.id===id||r.id===String(id));
@@ -2221,107 +2190,6 @@ function renderDaily(){
   document.getElementById('daily-tbl').innerHTML=buildPayTable(allRows);
   renderDailyChart(d);
   renderDailyClosing(d,date);
-}
-
-// ── 수강생 수업 이력 검색 ──
-function searchStudentHistory(q){
-  const list=document.getElementById('student-ac-list');
-  if(!q||q.length<1){list.classList.remove('show');return;}
-  // payRecords에서 이름 목록
-  const fromPay=[...new Set(payRecords.map(r=>r.name).filter(n=>n&&n!=='물'&&n.includes(q)))];
-  // members에서 이름 목록
-  const fromMembers=[...new Set((window.members||[]).map(m=>m.name).filter(n=>n&&n.includes(q)))];
-  const names=[...new Set([...fromPay,...fromMembers])].slice(0,8);
-  if(!names.length){list.classList.remove('show');return;}
-  list.innerHTML=names.map(n=>`<div class="ac-item" onmousedown="pickStudentSearch('${n.replace(/'/g,"\\'")}')"> ${n}</div>`).join('');
-  list.classList.add('show');
-}
-function hideStudentAc(){
-  const list=document.getElementById('student-ac-list');
-  if(list) list.classList.remove('show');
-}
-function pickStudentSearch(name){
-  document.getElementById('student-search-input').value=name;
-  hideStudentAc();
-  renderStudentHistory(name);
-}
-function clearStudentSearch(){
-  document.getElementById('student-search-input').value='';
-  document.getElementById('student-history-result').innerHTML='';
-  hideStudentAc();
-}
-function renderStudentHistory(name){
-  const wrap=document.getElementById('student-history-result');
-  if(!name){wrap.innerHTML='';return;}
-
-  // payRecords에서 해당 수강생 결제 이력
-  const payHistory=payRecords
-    .filter(r=>r.name===name&&r.name!=='물')
-    .sort((a,b)=>a.date>b.date?-1:1);
-
-  // members history에서 티켓 차감 이력
-  const member=(window.members||[]).find(m=>m.name===name);
-  const deductHistory=(member?.history||[])
-    .map(h=>({date:h.date,time:h.time||'',teacher:h.teacher||'',cat:h.cat||'',_isDeduct:true}))
-    .sort((a,b)=>a.date>b.date?-1:1);
-
-  if(!payHistory.length&&!deductHistory.length){
-    wrap.innerHTML=`<div style="font-size:13px;color:#aaa;text-align:center;padding:16px">"${name}"님의 수업 이력이 없습니다</div>`;
-    return;
-  }
-
-  const CAT_COLOR={'정규':'#1a1a1a','팝업':'#2e7d32','비기너':'#c8b741','베이직':'#f5a623','K-POP':'#4a90d9','워크샵':'#9c27b0'};
-  const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
-
-  // 날짜별로 합치기
-  const dateMap={};
-  payHistory.forEach(r=>{
-    if(!dateMap[r.date]) dateMap[r.date]=[];
-    dateMap[r.date].push({type:'pay',teacher:r.teacher||'',cat:r.cat||'',ticket:r.ticket||'',amt:r.amt,pay:r.pay});
-  });
-  deductHistory.forEach(h=>{
-    if(!dateMap[h.date]) dateMap[h.date]=[];
-    dateMap[h.date].push({type:'deduct',teacher:h.teacher,cat:h.cat});
-  });
-
-  const sortedDates=Object.keys(dateMap).sort((a,b)=>a>b?-1:1);
-  const totalSessions=deductHistory.length+payHistory.filter(r=>r.ticket&&r.ticket!=='').length;
-
-  const rows=sortedDates.map(date=>{
-    const items=dateMap[date];
-    const itemsHtml=items.map(item=>{
-      const col=CAT_COLOR[item.cat]||'#aaa';
-      const lbl=CAT_LABEL[item.cat]||item.cat||'—';
-      if(item.type==='deduct'){
-        return`<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
-          <span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#e1f5ee;color:#0f6e56;font-weight:600">🎫 티켓</span>
-          <span style="font-size:12px;font-weight:600">${item.teacher||'—'}</span>
-          ${item.cat?`<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:${col}18;color:${col}">${lbl}</span>`:''}
-        </div>`;
-      } else {
-        return`<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
-          <span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#faeeda;color:#854f0b;font-weight:600">${item.pay||'결제'}</span>
-          <span style="font-size:12px;font-weight:600">${item.teacher||'—'}</span>
-          ${item.cat?`<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:${col}18;color:${col}">${lbl}</span>`:''}
-          <span style="font-size:11px;color:#aaa">${item.amt>0?fmtW(item.amt):''}</span>
-        </div>`;
-      }
-    }).join('');
-    return`<div style="display:grid;grid-template-columns:80px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0ee">
-      <span style="font-size:12px;color:#888;padding-top:3px;white-space:nowrap">${date.replace(/-/g,'.')}</span>
-      <div>${itemsHtml}</div>
-    </div>`;
-  }).join('');
-
-  wrap.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="font-size:14px;font-weight:700;color:#1a1a1a">${name}님 수업 이력</div>
-      <div style="font-size:12px;color:#888">총 ${sortedDates.length}일 · ${deductHistory.length}회 수강</div>
-    </div>
-    ${member?`<div style="font-size:12px;color:#555;background:#f8f8f5;border-radius:8px;padding:8px 12px;margin-bottom:10px">
-      📋 다회권: ${member.passType==='basic'?`베이직 · ${member.basicTeacher||''}`:member.passType+'T'} · 잔여 ${member.remaining}회
-    </div>`:''}
-    <div>${rows}</div>`;
 }
 
 function renderMonthly(){
@@ -2484,7 +2352,7 @@ function delTeacher(i){
 
 
 // ── 임시 수업 추가 ──
-let tempClasses=[]; window.tempClasses=tempClasses; // [{t, cat, time}]
+let tempClasses=[]; // [{t, cat, time}]
 let acCat='정규';
 
 function openAddClassModal(){
@@ -3022,10 +2890,7 @@ function renderDailyClosing(recs, date){
     </div>
     ${waterRecs.length>0?`<div class="closing-row">
       <span class="closing-label">💧 물 <span style="font-size:10px;color:#aaa">(합계 포함)</span></span>
-      <span style="display:flex;align-items:center;gap:8px">
-        <span class="closing-val">${waterRecs.length}개 · ${fmtW(waterRecs.reduce((s,r)=>s+r.amt,0))}</span>
-        <button onclick="cancelLastWater()" style="font-size:11px;padding:2px 8px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer" onmouseover="this.style.borderColor='#e24b4a';this.style.color='#e24b4a'" onmouseout="this.style.borderColor='#e0e0da';this.style.color='#888'">1개 취소</button>
-      </span>
+      <span style="display:flex;align-items:center;gap:8px"><span class="closing-val">${waterRecs.length}개 · ${fmtW(waterRecs.reduce((s,r)=>s+r.amt,0))}</span><button onclick="cancelLastWater()" style="font-size:11px;padding:2px 8px;font-family:inherit;background:#fff;border:1px solid #e0e0da;border-radius:6px;color:#888;cursor:pointer">1개 취소</button></span>
     </div>`:''}
 
     <div style="border-top:1px solid #f0f0ee;margin:8px 0"></div>
