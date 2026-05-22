@@ -2068,7 +2068,7 @@ async function cancelLastWater(){
   (window.toast||function(){})('물 1개 취소됐습니다 💧');
 }
 
-function cancelTicketDeduct(memberId, histId, memberName, currentRemaining){
+async function cancelTicketDeduct(memberId, histId, memberName, currentRemaining){
   const newRemain = currentRemaining + 1;
   const confirmed = confirm(
     `🎫 티켓 차감 취소\n\n` +
