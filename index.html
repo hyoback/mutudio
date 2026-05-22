@@ -2460,7 +2460,9 @@ function renderCatPieChart(recs){
 
 function renderTeacherList(){
   const list=document.getElementById('teacher-list');
-  document.getElementById('teacher-count').textContent=`(${payTeachers.length}명)`;
+  const countEl=document.getElementById('teacher-count');
+  if(countEl) countEl.textContent=`(${payTeachers.length}명)`;
+  if(!list) return;
   if(!payTeachers.length){list.innerHTML='<div style="font-size:12px;color:#aaa">등록된 강사가 없습니다</div>';return;}
   list.innerHTML=payTeachers.map((t,i)=>`<div class="teacher-item"><span class="tname">${t}</span><button class="tdel" onclick="delTeacher(${i})">삭제</button></div>`).join('');
 }
