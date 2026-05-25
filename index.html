@@ -530,7 +530,7 @@ tr:hover td{background:#fafaf9}
             </div>
             <div style="display:flex;gap:6px;margin-top:6px">
               <div id="pro-chip" onclick="togglePro()" class="pro-toggle-btn" data-on="0" style="flex:1;justify-content:center">
-                <span class="pro-label">전문반</span>
+                <span class="pro-label">전문반 차감</span>
               </div>
               <button id="deduct-chip" onclick="toggleDeduct()" class="pro-toggle-btn" data-on="0" style="border-color:#204828;color:#204828;flex:1;justify-content:center">
                 🎫 티켓 차감
@@ -553,6 +553,9 @@ tr:hover td{background:#fafaf9}
                     <option value="4">4주 (4회) — ₩150,000</option>
                     <option value="3">3주 (3회) — ₩110,000</option>
                   </select>
+                </div>
+                <div id="pass-pro-extra" style="display:none;flex:1;min-width:140px">
+                  <input type="month" id="f-pass-pro-month" class="pay-input" style="width:100%" title="전문반 수강 월">
                 </div>
               </div>
               <div style="font-size:11px;color:#6aab84;margin-top:6px" class="pass-reg-hint">결제 등록 시 다회권도 자동 생성됩니다</div>
@@ -1834,19 +1837,37 @@ function showPassRegWrap(passType){
   const wrap=document.getElementById('pass-reg-wrap');
   const basicExtra=document.getElementById('pass-basic-extra');
   const weekExtra=document.getElementById('pass-week-extra');
+  const proExtra=document.getElementById('pass-pro-extra');
   const label=document.getElementById('pass-reg-label');
+  const hint=document.querySelector('#pass-reg-wrap .pass-reg-hint');
   wrap.style.display='block';
   basicExtra.style.display=passType==='basic'?'block':'none';
   weekExtra.style.display=passType==='basic'?'block':'none';
+  proExtra.style.display=passType==='pro'?'block':'none';
   if(passType==='pro'){
-    label.textContent='📋 PRO 회원 등록';
-    document.querySelector('#pass-reg-wrap .pass-reg-hint').textContent='결제 등록 시 PRO 회원으로 등록됩니다';
+    wrap.style.background='#f5f0ff';
+    wrap.style.borderColor='#c4a8e8';
+    label.style.color='#7b4fb5';
+    label.textContent='🎓 전문반 등록 / 재결제';
+    hint.style.color='#9c6fdb';
+    hint.textContent='결제 등록 시 전문반(proMembers)에 자동 등록됩니다. 이미 등록된 경우 다음 달로 연장됩니다.';
+    // 기본값: 이번 달
+    const monthEl=document.getElementById('f-pass-pro-month');
+    if(monthEl&&!monthEl.value) monthEl.value=new Date().toISOString().slice(0,7);
   } else if(passType==='basic'){
+    wrap.style.background='#f0f8f2';
+    wrap.style.borderColor='#a8d5b0';
+    label.style.color='#204828';
     label.textContent='📋 베이직 월등록';
-    document.querySelector('#pass-reg-wrap .pass-reg-hint').textContent='결제 등록 시 베이직 다회권도 자동 생성됩니다';
+    hint.style.color='#6aab84';
+    hint.textContent='결제 등록 시 베이직 다회권도 자동 생성됩니다';
   } else {
+    wrap.style.background='#f0f8f2';
+    wrap.style.borderColor='#a8d5b0';
+    label.style.color='#204828';
     label.textContent='📋 다회권 등록';
-    document.querySelector('#pass-reg-wrap .pass-reg-hint').textContent='결제 등록 시 다회권도 자동 생성됩니다';
+    hint.style.color='#6aab84';
+    hint.textContent='결제 등록 시 다회권도 자동 생성됩니다';
   }
 }
 function clearPassReg(){
@@ -1856,6 +1877,7 @@ function clearPassReg(){
   document.getElementById('f-pass-phone').value='';
   document.getElementById('f-pass-basic-teacher').value='';
   document.getElementById('f-pass-basic-weeks').value='4';
+  document.getElementById('f-pass-pro-month').value='';
   document.getElementById('f-reserve-phone').value='';
   document.getElementById('f-reserve-teacher').value='';
   document.getElementById('f-reserve-weeks').value='4';
@@ -1960,6 +1982,7 @@ async function addPayRecord(){
       status:'reserved',reserveAmt:35000,
       avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
       memo:'예약금 납부',history:[],
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     };
     dbCompat.collection('members').add(reserveData).then(()=>{
       (window.toast||function(){})(`${name}님 예약금 등록 완료! (${teacher} · ${weeks}주)`);
@@ -1970,24 +1993,59 @@ async function addPayRecord(){
   if(fPassType&&name){
     const phone=document.getElementById('f-pass-phone').value.trim();
     const isProPass=fPassType==='pro';
-    const passData={
-      name,phone,payDate:date,
-      passType:fPassType,
-      remaining:isProPass?0:fPassType==='basic'
-        ?parseInt(document.getElementById('f-pass-basic-weeks').value||3)
-        :fPassType,
-      avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
-      memo:'',history:[],
-    };
-    if(fPassType==='basic'){
-      passData.basicTeacher=document.getElementById('f-pass-basic-teacher').value;
-      passData.basicWeeks=parseInt(document.getElementById('f-pass-basic-weeks').value||3);
-      if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
+
+    // ── PRO: proMembers 등록 ──
+    if(isProPass){
+      if(!phone){alert('전화번호를 입력해 주세요.');return;}
+      const proMonth=document.getElementById('f-pass-pro-month').value||date.slice(0,7);
+      // proMembers 연동 (window.proMembers는 전문반 모듈에서 실시간 동기화)
+      const existing=(window.proMembers||[]).find(m=>m.name===name&&m.month===proMonth);
+      if(existing){
+        // 이미 해당 월에 등록 → 다음 달 연장
+        const[y,mo]=proMonth.split('-').map(Number);
+        const nextYm=new Date(y,mo,1).toISOString().slice(0,7);
+        const dupNext=(window.proMembers||[]).find(m=>m.name===name&&m.month===nextYm);
+        if(dupNext){
+          alert(`${name}님은 이미 ${nextYm.replace('-','년 ')}월 전문반에 등록되어 있습니다.`);return;
+        }
+        if(!confirm(`${name}님은 ${proMonth.replace('-','년 ')}월 전문반에 이미 등록되어 있습니다.\n${nextYm.replace('-','년 ')}월로 연장 등록할까요?`))return;
+        (window.setSyncStatus||function(){})('saving');
+        const{getFirestore,collection,addDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        await addDoc(collection(window._firestoreDb,'proMembers'),{
+          name,phone,month:nextYm,memo:'',attendance:[],fixedAttend:{},createdAt:serverTimestamp()
+        });
+        (window.toast||function(){})(`${name}님 ${nextYm.replace('-','년 ')}월 전문반 연장 등록 완료! 🎉`);
+      } else {
+        // 신규 등록
+        (window.setSyncStatus||function(){})('saving');
+        const{getFirestore,collection,addDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        await addDoc(collection(window._firestoreDb,'proMembers'),{
+          name,phone,month:proMonth,memo:'',attendance:[],fixedAttend:{},createdAt:serverTimestamp()
+        });
+        (window.toast||function(){})(`${name}님 ${proMonth.replace('-','년 ')}월 전문반 신규 등록 완료! 🎉`);
+      }
+    } else {
+      // 일반 다회권 / basic
+      const passData={
+        name,phone,payDate:date,
+        passType:fPassType,
+        remaining:fPassType==='basic'
+          ?parseInt(document.getElementById('f-pass-basic-weeks').value||3)
+          :fPassType,
+        avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
+        memo:'',history:[],
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      if(fPassType==='basic'){
+        passData.basicTeacher=document.getElementById('f-pass-basic-teacher').value;
+        passData.basicWeeks=parseInt(document.getElementById('f-pass-basic-weeks').value||3);
+        if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
+      }
+      (window.setSyncStatus||function(){})('saving');
+      dbCompat.collection('members').add(passData).then(()=>{
+        (window.toast||function(){})(`${name}님 다회권 등록 완료!`);
+      }).catch(e=>{(window.toast||function(){})('등록 중 오류: '+e.message);});
     }
-    (window.setSyncStatus||function(){})('saving');
-    dbCompat.collection('members').add(passData).then(()=>{
-      (window.toast||function(){})(`${name}님 ${isProPass?'PRO':'다회권'} 등록 완료!`);
-    }).catch(e=>{(window.toast||function(){})('등록 중 오류: '+e.message);});
   }
 
   clearPayForm();
@@ -2034,17 +2092,17 @@ function updatePayStats(){
   const today=new Date().toISOString().split('T')[0];
   const todayRecs=payRecords.filter(r=>r.date===today);
 
-  // 물 결제 (이름이 '물' 이거나 amt===1000이고 이름에 '물' 포함)
-  const waterRecs=todayRecs.filter(r=>r.name==='물'||(r.amt===1000&&r.name==='물'));
-  // 일반 결제 (물 제외)
-  const payRecs=todayRecs.filter(r=>r.name!=='물');
+  // 물
+  const waterRecs=todayRecs.filter(r=>r.name==='물'||r.water===true);
+  // 실제 결제 (물·전문반수강·티켓차감 제외, 금액 있는 것만)
+  const payRecs=todayRecs.filter(r=>r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0);
 
   const cd=payRecs.filter(r=>r.pay==='카드').length;
   const tf=payRecs.filter(r=>r.pay==='이체').length;
   const cs=payRecs.filter(r=>r.pay==='현금').length;
   const payAmt=payRecs.reduce((s,r)=>s+r.amt,0);
 
-  // 기존 티켓 차감 — members history 기준
+  // 티켓 차감 — members history 기준
   const deductItems=[];
   (window.members||[]).forEach(m=>{
     (m.history||[]).forEach(h=>{
@@ -2052,15 +2110,16 @@ function updatePayStats(){
     });
   });
 
+  // 전문반 수강 건수
+  const proCnt=todayRecs.filter(r=>r.ticket==='전문반').length;
+
   // 물 판매
   const waterCnt=waterRecs.length;
   const waterAmt=waterRecs.reduce((s,r)=>s+r.amt,0);
 
-  // 총 매출 (일반결제 + 물)
+  // 총 매출 = 실제 결제 + 물 (전문반·티켓차감 0원 제외)
   const totalAmt=payAmt+waterAmt;
-  const totalCnt=todayRecs.length;
 
-  // 카드 1: 일반 결제
   setText('ps-pay-cnt',payRecs.length+'건');
   setText('ps-pay-method',`카드 ${cd} · 이체 ${tf} · 현금 ${cs}`);
   setText('ps-deduct-cnt',deductItems.length+'회');
@@ -2068,7 +2127,7 @@ function updatePayStats(){
   setText('ps-water-cnt',waterCnt+'개');
   setText('ps-water-amt',fmtW(waterAmt));
   setText('ps-cnt',fmtW(totalAmt));
-  setText('ps-total-cnt',`결제 ${payRecs.length}건 · 차감 ${deductItems.length}건`);
+  setText('ps-total-cnt',`결제 ${payRecs.length}건 · 차감 ${deductItems.length}건${proCnt?' · 전문반 '+proCnt+'명':''}`);
 }
 
 window.updatePayStats=updatePayStats;
@@ -2253,17 +2312,19 @@ function renderDaily(){
     return String(v).slice(0,10);
   }
   let d=payRecords.filter(r=>normDate(r.date)===date&&(!cat||r.cat===cat));
-  const waterRecs=d.filter(r=>r.name==='물');
-  const payRecs=d.filter(r=>r.name!=='물');
-  const tot=d.reduce((s,r)=>s+r.amt,0); // 물 포함 전체 합계
-  const cd=d.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0); // 물 포함
-  const tf=d.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0); // 물 포함
-  const cs=d.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0); // 물 포함
+  const waterRecs=d.filter(r=>r.name==='물'||r.water===true);
+  // 실제 결제: 물·전문반수강·티켓차감 제외, 금액 있는 것
+  const payRecs=d.filter(r=>r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0);
+  // 총 매출 = 실제결제 + 물 (전문반·티켓 0원 제외)
+  const tot=payRecs.reduce((s,r)=>s+r.amt,0)+waterRecs.reduce((s,r)=>s+r.amt,0);
+  const cd=d.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
+  const tf=d.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
+  const cs=d.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
   const waterCnt=waterRecs.length;
   const waterAmt=waterRecs.reduce((s,r)=>s+r.amt,0);
   // 티켓 차감 (members history 기준)
   const deductCnt=(window.members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>normDate(h.date)===date).length),0);
-  // 전문반 수강 건수 (payRecords ticket==='전문반')
+  // 전문반 수강 건수
   const proCnt=d.filter(r=>r.ticket==='전문반').length;
   document.getElementById('daily-mini').innerHTML=`
     <div class="mini-stat"><div class="ml">당일 총 매출</div><div class="mv" style="color:#204828">${fmtW(tot)}</div></div>
@@ -2319,13 +2380,21 @@ function renderMonthly(){
   if(!selMonthPay||!months.includes(selMonthPay)) selMonthPay=months[0];
   document.getElementById('month-grid').innerHTML=months.map(m=>{
     let d=payRecords.filter(r=>r.date.startsWith(m)&&(!cat||r.cat===cat));
-    const tot=d.reduce((s,r)=>s+r.amt,0);
+    // 실제 결제만 (전문반수강·티켓차감 제외)
+    const payOnly=d.filter(r=>r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0);
+    const waterOnly=d.filter(r=>r.name==='물'||r.water===true);
+    const tot=payOnly.reduce((s,r)=>s+r.amt,0)+waterOnly.reduce((s,r)=>s+r.amt,0);
     return`<div class="mcrd${m===selMonthPay?' sel':''}" onclick="selMonthPay='${m}';renderMonthly()">
-      <div class="mm">${m}</div><div class="mv">${fmtW(tot)}</div><div class="mc">${d.length}건</div></div>`;
+      <div class="mm">${m}</div><div class="mv">${fmtW(tot)}</div><div class="mc">${payOnly.length+waterOnly.length}건</div></div>`;
   }).join('');
   let data=payRecords.filter(r=>r.date.startsWith(selMonthPay)&&(!cat||r.cat===cat));
   document.getElementById('monthly-tbl').innerHTML=buildPayTable(data);
-  renderMonthlyChart(months,m=>payRecords.filter(r=>r.date.startsWith(m)&&(!cat||r.cat===cat)).reduce((s,r)=>s+r.amt,0));
+  renderMonthlyChart(months,m=>{
+    const d=payRecords.filter(r=>r.date.startsWith(m)&&(!cat||r.cat===cat));
+    const pay=d.filter(r=>r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0).reduce((s,r)=>s+r.amt,0);
+    const water=d.filter(r=>r.name==='물'||r.water===true).reduce((s,r)=>s+r.amt,0);
+    return pay+water;
+  });
 }
 
 function populateStatMonths(){
@@ -2869,8 +2938,8 @@ function renderDailyClosing(recs, date){
   const waterRecs=recs.filter(r=>r.water===true||(r.amt===1000&&r.name==='물')||r.name==='물');
   const payRecs=recs.filter(r=>r.name!=='물'&&!r.water);
 
-  // 결제 금액 합계 (물 포함 전체)
-  const total=recs.filter(r=>r.pay!=='다회권').reduce((s,r)=>s+r.amt,0);
+  // 결제 금액 합계: 실제 결제(카드·이체·현금) + 물만 포함, 전문반·다회권 0원 제외
+  const total=recs.filter(r=>r.pay==='카드'||r.pay==='이체'||r.pay==='현금').reduce((s,r)=>s+r.amt,0);
   const card=recs.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
   const tf=recs.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
   const cash=recs.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
