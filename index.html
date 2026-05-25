@@ -1823,12 +1823,13 @@ function selectReservation(el){
 }
 function selectTicket(el,passType,price){
   fAmt=price; fWater=false; fWaterOnly=false; fReserve=false;
-  fPassType=passType;
-  clearPassReg();
+  clearPassReg(true);   // UI 및 상태 초기화
+  fPassType=passType;   // clearPassReg 후에 세팅
   updateAmtDisplay();
   showPassRegWrap(passType);
 }
 function selectBasicMonthlyPass(el){
+  clearPassReg(true);
   fPassType='basic'; fWater=false; fWaterOnly=false; fReserve=false;
   showPassRegWrap('basic');
   selectBasicMonthly(el);
@@ -1870,8 +1871,9 @@ function showPassRegWrap(passType){
     hint.textContent='결제 등록 시 다회권도 자동 생성됩니다';
   }
 }
-function clearPassReg(){
-  fPassType=0; fReserve=false;
+function clearPassReg(resetType){
+  // resetType=true 일 때만 fPassType 초기화 (selectTicket 내부 호출엔 false)
+  if(resetType){fPassType=0;fReserve=false;}
   document.getElementById('pass-reg-wrap').style.display='none';
   document.getElementById('reserve-reg-wrap').style.display='none';
   document.getElementById('f-pass-phone').value='';
@@ -1885,7 +1887,7 @@ function clearPassReg(){
 // 물만 합산 허용, 나머지는 단독 setAmt 사용
 function setAmt(n){
   fAmt=n; fWater=false; fWaterOnly=false; fPassType=0; fReserve=false;
-  clearPassReg(); updateAmtDisplay();
+  clearPassReg(true); updateAmtDisplay();
 }
 function addAmtNoPass(n){setAmt(n);}
 function addWater(){
@@ -1900,8 +1902,8 @@ function addWater(){
   if(window.toast) window.toast('물 💧 추가됨 (+1,000원)');
 }
 function addAmt(n){fAmt+=n;fWaterOnly=false;updateAmtDisplay();}
-function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom').value)||0;if(v>0){fAmt=v;fWater=false;fWaterOnly=false;fPassType=0;fReserve=false;clearPassReg();updateAmtDisplay();document.getElementById('f-amt-custom').value=''}}
-function resetAmt(){fAmt=0;fWater=false;fWaterOnly=false;fPassType=0;updateAmtDisplay();document.getElementById('f-amt-custom').value='';clearPassReg();}
+function applyCustomAmt(){const v=parseInt(document.getElementById('f-amt-custom').value)||0;if(v>0){fAmt=v;fWater=false;fWaterOnly=false;fPassType=0;fReserve=false;clearPassReg(true);updateAmtDisplay();document.getElementById('f-amt-custom').value=''}}
+function resetAmt(){fAmt=0;fWater=false;fWaterOnly=false;fPassType=0;updateAmtDisplay();document.getElementById('f-amt-custom').value='';clearPassReg(true);}
 function updateAmtDisplay(){
   const d=document.getElementById('amt-display'),rb=document.getElementById('amt-reset-btn');
   d.style.color='';d.style.fontWeight='';
@@ -2079,7 +2081,7 @@ function clearPayForm(){
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
   const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
   const dc=document.getElementById('deduct-chip');if(dc){dc.dataset.on='0';dc.style.background='';dc.style.borderColor='#204828';dc.style.color='#204828';dc.style.fontWeight='';}
-  clearPassReg();
+  clearPassReg(true);
   document.querySelectorAll('#ticket-chips .chip').forEach(c=>c.className='chip');
   document.getElementById('pb-card').className='chip on-card';
   document.getElementById('pb-transfer').className='chip';
@@ -3187,7 +3189,7 @@ function toggleDeduct(){
     chip.dataset.on='1';
     chip.style.background='#eaf4e5';chip.style.borderColor='#204828';chip.style.color='#0f6e56';chip.style.fontWeight='600';
     fDeduct=true; fTicket=''; fAmt=0; fWater=false; fWaterOnly=false; fPassType=0; fReserve=false;
-    clearPassReg();
+    clearPassReg(true);
     const disp=document.getElementById('amt-display');
     if(disp){disp.className='';disp.textContent='티켓 차감';disp.style.color='#204828';disp.style.fontWeight='600';}
     document.getElementById('amt-reset-btn').style.display='none';
@@ -3211,7 +3213,7 @@ function togglePro(){
     chip.classList.add('on');
     fTicket='전문반';
     fAmt=0; fWater=false; fWaterOnly=false; fPassType=0; fReserve=false;
-    clearPassReg();
+    clearPassReg(true);
     const disp=document.getElementById('amt-display');
     if(disp){
       disp.className='';
