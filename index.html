@@ -624,7 +624,7 @@ tr:hover td{background:#fafaf9}
 
   <!-- 월별 보기 -->
   <div id="ptab-monthly" style="display:none">
-    <div class="pay-panel">
+    <div class="pay-panel" style="margin-bottom:12px">
       <div class="pay-panel-hd">월별 보기</div>
       <select id="fm-cat" class="pay-input" style="width:120px;font-size:12px;padding:6px 9px;margin-bottom:4px" onchange="renderMonthly()">
         <option value="">전체 분류</option>
@@ -634,14 +634,36 @@ tr:hover td{background:#fafaf9}
       <div class="chart-container"><canvas id="monthly-chart" role="img" aria-label="월별 매출 차트"></canvas></div>
       <div class="tbl-wrap" style="margin-top:8px"><div id="monthly-tbl"></div></div>
     </div>
+    <!-- 선택 월 일별 상세 -->
+    <div class="pay-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="pay-panel-hd" style="margin:0" id="daily-detail-title">일별 상세</div>
+        <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+          <button id="dd-tab-amt" onclick="switchDailyDetailTab('amt')" style="padding:4px 12px;font-size:11px;font-family:inherit;border:none;border-radius:6px;cursor:pointer;background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)">매출</button>
+          <button id="dd-tab-cnt" onclick="switchDailyDetailTab('cnt')" style="padding:4px 12px;font-size:11px;font-family:inherit;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#aaa;font-weight:500">인원</button>
+        </div>
+      </div>
+      <div id="daily-detail-heatmap" style="overflow-x:auto"></div>
+    </div>
   </div>
 
   <!-- 강사 통계 -->
   <div id="ptab-stats" style="display:none">
+
+    <!-- 요일별 매출 + 인원 -->
     <div class="pay-panel" style="margin-bottom:12px">
-      <div class="pay-panel-hd">요일별 평균 매출</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="pay-panel-hd" style="margin:0">요일별 현황</div>
+        <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+          <button id="dow-tab-amt" onclick="switchDowTab('amt')" style="padding:4px 12px;font-size:11px;font-family:inherit;border:none;border-radius:6px;cursor:pointer;background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)">매출</button>
+          <button id="dow-tab-cnt" onclick="switchDowTab('cnt')" style="padding:4px 12px;font-size:11px;font-family:inherit;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#aaa;font-weight:500">인원</button>
+        </div>
+      </div>
       <div style="position:relative;height:200px"><canvas id="dow-chart"></canvas></div>
+      <div id="dow-summary" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px"></div>
     </div>
+
+    <!-- 수업 분류별 매출 비중 -->
     <div class="pay-panel" style="margin-bottom:12px">
       <div class="pay-panel-hd">수업 분류별 매출 비중</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center">
@@ -649,6 +671,17 @@ tr:hover td{background:#fafaf9}
         <div id="cat-pie-legend" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
+
+    <!-- 결제 유형별 비중 -->
+    <div class="pay-panel" style="margin-bottom:12px">
+      <div class="pay-panel-hd">결제 유형별 비중</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center">
+        <div style="position:relative;height:200px"><canvas id="ticket-pie-chart"></canvas></div>
+        <div id="ticket-pie-legend" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+
+    <!-- 강사별 수업 인원 -->
     <div class="pay-panel">
       <div class="pay-panel-hd">강사별 수업 인원</div>
       <div style="margin-bottom:12px">
@@ -1760,6 +1793,7 @@ function selClass(teacher,cat){
   if(fTeacher&&cat) fCat=cat;
   else if(!fTeacher) fCat='';
   renderClassChips();
+  updatePassRegHint();
 }
 
 function toggleAllTeachers(){
@@ -1868,7 +1902,22 @@ function showPassRegWrap(passType){
     label.style.color='#204828';
     label.textContent='📋 다회권 등록';
     hint.style.color='#6aab84';
-    hint.textContent='결제 등록 시 다회권도 자동 생성됩니다';
+    updatePassRegHint();
+  }
+}
+// 수업 선택 상태에 따라 안내 문구 업데이트
+function updatePassRegHint(){
+  if(!document.getElementById('pass-reg-wrap')) return;
+  if(document.getElementById('pass-reg-wrap').style.display==='none') return;
+  if(fPassType==='pro'||fPassType==='basic') return;
+  const hint=document.querySelector('#pass-reg-wrap .pass-reg-hint');
+  if(!hint) return;
+  if(fTeacher){
+    hint.style.color='#1d9e75';
+    hint.textContent=`✅ 수업 선택됨 (${fTeacher}) — 등록과 동시에 1회 차감됩니다`;
+  } else {
+    hint.style.color='#6aab84';
+    hint.textContent='수업을 선택하면 등록과 동시에 1회 차감됩니다. 선택 안 하면 다회권만 등록됩니다.';
   }
 }
 function clearPassReg(resetType){
@@ -2028,14 +2077,25 @@ async function addPayRecord(){
       }
     } else {
       // 일반 다회권 / basic
+      const hasClassSelected = !!fTeacher; // 수업 선택 여부 (clearPayForm 전에 저장)
+      const teacherSnap = fTeacher;
+      const catSnap = fCat;
+      const totalRemain = fPassType==='basic'
+        ? parseInt(document.getElementById('f-pass-basic-weeks').value||3)
+        : fPassType;
+      // 수업 선택 시 즉시 1회 차감 → remaining 1 적게 시작
+      const startRemain = hasClassSelected ? totalRemain - 1 : totalRemain;
+      const now2=new Date();
+      const timeStr2=String(now2.getHours()).padStart(2,'0')+':'+String(now2.getMinutes()).padStart(2,'0');
+      const initHistory = hasClassSelected
+        ? [{date, time:timeStr2, teacher:teacherSnap, cat:catSnap, id:Date.now()}]
+        : [];
       const passData={
         name,phone,payDate:date,
         passType:fPassType,
-        remaining:fPassType==='basic'
-          ?parseInt(document.getElementById('f-pass-basic-weeks').value||3)
-          :fPassType,
+        remaining:startRemain,
         avIdx:(window.members||[]).length%(window.AV||['av0','av1','av2','av3','av4']).length,
-        memo:'',history:[],
+        memo:'',history:initHistory,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       };
       if(fPassType==='basic'){
@@ -2044,9 +2104,17 @@ async function addPayRecord(){
         if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
       }
       (window.setSyncStatus||function(){})('saving');
-      dbCompat.collection('members').add(passData).then(()=>{
-        (window.toast||function(){})(`${name}님 다회권 등록 완료!`);
-      }).catch(e=>{(window.toast||function(){})('등록 중 오류: '+e.message);});
+      try{
+        await dbCompat.collection('members').add(passData);
+        if(hasClassSelected){
+          (window.toast||function(){})(`${name}님 다회권 등록 + 오늘 1회 차감 완료! (잔여 ${startRemain}회)`);
+        } else {
+          (window.toast||function(){})(`${name}님 다회권 등록 완료! (${totalRemain}회권)`);
+        }
+      } catch(e){
+        (window.toast||function(){})('등록 중 오류: '+e.message);
+        return;
+      }
     }
   }
 
@@ -2397,6 +2465,7 @@ function renderMonthly(){
     const water=d.filter(r=>r.name==='물'||r.water===true).reduce((s,r)=>s+r.amt,0);
     return pay+water;
   });
+  renderDailyDetail();
 }
 
 function populateStatMonths(){
@@ -2412,6 +2481,7 @@ function renderTeacherStats(){
   const recs=month?payRecords.filter(r=>r.date.startsWith(month)):payRecords;
   renderDowChart(month);
   renderCatPieChart(recs);
+  renderTicketPieChart(recs);
   const map={};
   recs.forEach(r=>{
     if(!r.teacher) return;
@@ -2462,30 +2532,97 @@ function toggleTD(idx){
   a.classList.toggle('open',!o);
 }
 
+var _dowMode='amt'; // 'amt' | 'cnt'
+function switchDowTab(mode){
+  _dowMode=mode;
+  var btnAmt=document.getElementById('dow-tab-amt');
+  var btnCnt=document.getElementById('dow-tab-cnt');
+  var on='background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)';
+  var off='background:transparent;color:#aaa;font-weight:500;box-shadow:none';
+  if(btnAmt) btnAmt.style.cssText=btnAmt.style.cssText.replace(/background[^;]+;|color[^;]+;|font-weight[^;]+;|box-shadow[^;]+;/g,'');
+  if(btnCnt) btnCnt.style.cssText=btnCnt.style.cssText.replace(/background[^;]+;|color[^;]+;|font-weight[^;]+;|box-shadow[^;]+;/g,'');
+  if(btnAmt) Object.assign(btnAmt.style, mode==='amt'?{background:'#fff',color:'#1a1a1a',fontWeight:'600',boxShadow:'0 1px 3px rgba(0,0,0,.06)'}:{background:'transparent',color:'#aaa',fontWeight:'500',boxShadow:'none'});
+  if(btnCnt) Object.assign(btnCnt.style, mode==='cnt'?{background:'#fff',color:'#1a1a1a',fontWeight:'600',boxShadow:'0 1px 3px rgba(0,0,0,.06)'}:{background:'transparent',color:'#aaa',fontWeight:'500',boxShadow:'none'});
+  var curMonth=document.getElementById('st-month')?document.getElementById('st-month').value:'';
+  renderDowChart(curMonth);
+}
+
 function renderDowChart(month){
   var canvas=document.getElementById('dow-chart');
   if(!canvas||typeof Chart==='undefined') return;
-  var recs=month?payRecords.filter(function(r){return r.date.startsWith(month);}):payRecords;
+  // 실제 결제 레코드만 (전문반·물 제외)
+  var base=month?payRecords.filter(function(r){return r.date.startsWith(month);}):payRecords;
+  var recs=base.filter(function(r){return r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0;});
   var dows=['일','월','화','수','목','금','토'];
+  var DOW_COLORS=['#FF8A80','#82B1FF','#B9F6CA','#FFD180','#EA80FC','#80D8FF','#CCFF90'];
+  // 요일별 날짜셋 / 매출합 / 인원셋
   var sumMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
-  var cntMap={0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
+  var daySet={0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
+  var pplMap={0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
   recs.forEach(function(r){
     var dow=new Date(r.date+'T00:00:00').getDay();
     sumMap[dow]+=r.amt;
-    cntMap[dow].add(r.date);
+    daySet[dow].add(r.date);
+    if(r.name) pplMap[dow].add(r.date+'__'+r.name);
   });
-  var avgs=dows.map(function(_,i){return cntMap[i].size>0?Math.round(sumMap[i]/cntMap[i].size):0;});
+  // 티켓 차감 인원도 합산
+  (window.members||[]).forEach(function(m){
+    (m.history||[]).forEach(function(h){
+      if(!h.date) return;
+      if(month&&!h.date.startsWith(month)) return;
+      var dow=new Date(h.date+'T00:00:00').getDay();
+      daySet[dow].add(h.date);
+      pplMap[dow].add(h.date+'__'+m.name);
+    });
+  });
+  var isAmt=_dowMode==='amt';
+  var avgAmts=dows.map(function(_,i){return daySet[i].size>0?Math.round(sumMap[i]/daySet[i].size):0;});
+  var avgPpls=dows.map(function(_,i){
+    // 인원: 날짜별 유니크 인원의 평균
+    var byDate={};
+    pplMap[i].forEach(function(key){var parts=key.split('__');var d=parts[0];if(!byDate[d])byDate[d]=new Set();byDate[d].add(parts[1]);});
+    var days=Object.values(byDate);
+    return days.length>0?Math.round(days.reduce(function(s,s2){return s+s2.size;},0)/days.length):0;
+  });
+  var vals=isAmt?avgAmts:avgPpls;
   var ex=Chart.getChart(canvas); if(ex) ex.destroy();
   new Chart(canvas,{
     type:'bar',
-    data:{labels:dows,datasets:[{data:avgs,
-      backgroundColor:['#FF8A80','#82B1FF','#B9F6CA','#FFD180','#EA80FC','#80D8FF','#CCFF90'],
-      borderRadius:6,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:12}}},
-        y:{ticks:{callback:function(v){return '₩'+v.toLocaleString('ko-KR');},font:{size:10}},
-          grid:{color:'rgba(0,0,0,0.04)'}}}}
+    data:{labels:dows,datasets:[{
+      data:vals,
+      backgroundColor:DOW_COLORS,
+      borderRadius:6,borderSkipped:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+        return isAmt?'평균 ₩'+ctx.raw.toLocaleString('ko-KR'):'평균 '+ctx.raw+'명';
+      }}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12}}},
+        y:{ticks:{callback:function(v){return isAmt?'₩'+v.toLocaleString('ko-KR'):v+'명';},font:{size:10}},
+          grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }
   });
+  // 요일 요약 카드
+  var summaryEl=document.getElementById('dow-summary');
+  if(summaryEl){
+    var maxAmt=Math.max.apply(null,avgAmts)||1;
+    var maxPpl=Math.max.apply(null,avgPpls)||1;
+    summaryEl.innerHTML=dows.map(function(d,i){
+      var amtPct=Math.round(avgAmts[i]/maxAmt*100);
+      var pplV=avgPpls[i];
+      return '<div style="text-align:center;padding:6px 4px;background:#f9f9f8;border-radius:8px">'
+        +'<div style="font-size:12px;font-weight:700;color:#1a1a1a;margin-bottom:2px">'+d+'</div>'
+        +'<div style="font-size:10px;color:#204828;font-weight:600">₩'+Math.round(avgAmts[i]/1000)+'k</div>'
+        +'<div style="font-size:10px;color:#555;margin-top:1px">'+pplV+'명</div>'
+        +'<div style="height:3px;background:#e8e8e4;border-radius:2px;margin-top:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+amtPct+'%;background:'+DOW_COLORS[i]+';border-radius:2px"></div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+  }
 }
 
 function renderCatPieChart(recs){
@@ -2515,6 +2652,178 @@ function renderCatPieChart(recs){
       +'<span style="font-size:11px;color:#aaa">₩'+fmtN(vals[i])+'</span>'
       +'</div>';
   }).filter(Boolean).join('');
+}
+
+// ── 결제 유형별 파이 ──
+function renderTicketPieChart(recs){
+  var canvas=document.getElementById('ticket-pie-chart');
+  var legend=document.getElementById('ticket-pie-legend');
+  if(!canvas||typeof Chart==='undefined') return;
+  var tickets=['1 Ticket','4 Tickets','8 Tickets','Basic 월등록','PRO','예약금','기타'];
+  var colors=['#faeeda','#e8f5e9','#eeedfe','#fff3e0','#f5f0ff','#ede7f6','#f5f5f0'];
+  var txtColors=['#854f0b','#1b5e20','#311b92','#e65100','#7b4fb5','#4a148c','#888'];
+  // 실제 결제(카드·이체·현금)만
+  var paid=recs.filter(function(r){return r.pay==='카드'||r.pay==='이체'||r.pay==='현금';});
+  function matchTicket(ticket){
+    if(!ticket) return '기타';
+    if(ticket==='1 Ticket') return '1 Ticket';
+    if(ticket==='4 Tickets') return '4 Tickets';
+    if(ticket==='8 Tickets') return '8 Tickets';
+    if(ticket==='Basic 월등록'||ticket==='basic'||ticket==='Basic') return 'Basic 월등록';
+    if(ticket==='PRO'||ticket==='pro') return 'PRO';
+    if(ticket==='예약금') return '예약금';
+    return '기타';
+  }
+  var countMap={};
+  var amtMap={};
+  tickets.forEach(function(t){countMap[t]=0;amtMap[t]=0;});
+  paid.forEach(function(r){
+    var t=matchTicket(r.ticket);
+    countMap[t]=(countMap[t]||0)+1;
+    amtMap[t]=(amtMap[t]||0)+r.amt;
+  });
+  var vals=tickets.map(function(t){return countMap[t]||0;});
+  var total=vals.reduce(function(a,b){return a+b;},0);
+  var ex=Chart.getChart(canvas); if(ex) ex.destroy();
+  if(!total){if(legend)legend.innerHTML='<span style="font-size:12px;color:#aaa">데이터 없음</span>';return;}
+  // 0인 항목 제외
+  var filtered=tickets.map(function(t,i){return{t,i,v:vals[i],a:amtMap[t]};}).filter(function(x){return x.v>0;});
+  new Chart(canvas,{
+    type:'doughnut',
+    data:{
+      labels:filtered.map(function(x){return x.t;}),
+      datasets:[{data:filtered.map(function(x){return x.v;}),
+        backgroundColor:filtered.map(function(x){return txtColors[x.i];}),
+        borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}
+  });
+  if(legend){
+    legend.innerHTML=filtered.map(function(x){
+      var pct=Math.round(x.v/total*100);
+      return '<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="width:10px;height:10px;border-radius:2px;background:'+txtColors[x.i]+';flex-shrink:0"></span>'
+        +'<span style="font-size:12px;flex:1;color:#555">'+x.t+'</span>'
+        +'<span style="font-size:12px;font-weight:600">'+pct+'%</span>'
+        +'<span style="font-size:11px;color:#aaa">'+x.v+'건</span>'
+        +'</div>';
+    }).join('');
+  }
+}
+
+// ── 월별 일별 히트맵 / 표 ──
+var _ddMode='amt'; // 'amt'|'cnt'
+function switchDailyDetailTab(mode){
+  _ddMode=mode;
+  var btnAmt=document.getElementById('dd-tab-amt');
+  var btnCnt=document.getElementById('dd-tab-cnt');
+  if(btnAmt) Object.assign(btnAmt.style,mode==='amt'?{background:'#fff',color:'#1a1a1a',fontWeight:'600',boxShadow:'0 1px 3px rgba(0,0,0,.06)'}:{background:'transparent',color:'#aaa',fontWeight:'500',boxShadow:'none'});
+  if(btnCnt) Object.assign(btnCnt.style,mode==='cnt'?{background:'#fff',color:'#1a1a1a',fontWeight:'600',boxShadow:'0 1px 3px rgba(0,0,0,.06)'}:{background:'transparent',color:'#aaa',fontWeight:'500',boxShadow:'none'});
+  renderDailyDetail();
+}
+
+function renderDailyDetail(){
+  var wrap=document.getElementById('daily-detail-heatmap');
+  var title=document.getElementById('daily-detail-title');
+  if(!wrap) return;
+  if(!selMonthPay){wrap.innerHTML='<div style="text-align:center;padding:16px;color:#aaa;font-size:13px">월을 선택해 주세요</div>';return;}
+  var ym=selMonthPay;
+  if(title) title.textContent=ym.replace('-','년 ')+'월 일별 상세';
+
+  // 해당 월 payRecords
+  var monthRecs=payRecords.filter(function(r){return r.date&&r.date.startsWith(ym);});
+  // 티켓 차감 포함 인원 (members history)
+  var deductByDate={};
+  (window.members||[]).forEach(function(m){
+    (m.history||[]).forEach(function(h){
+      if(!h.date||!h.date.startsWith(ym)) return;
+      if(!deductByDate[h.date]) deductByDate[h.date]=new Set();
+      deductByDate[h.date].add(m.name);
+    });
+  });
+
+  // 날짜별 집계
+  var daysInMonth=new Date(parseInt(ym.split('-')[0]),parseInt(ym.split('-')[1]),0).getDate();
+  var rows=[];
+  for(var day=1;day<=daysInMonth;day++){
+    var d=ym+'-'+String(day).padStart(2,'0');
+    var recs=monthRecs.filter(function(r){return r.date===d;});
+    var payRecs=recs.filter(function(r){return r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0;});
+    var waterRecs=recs.filter(function(r){return r.name==='물'||r.water===true;});
+    var proRecs=recs.filter(function(r){return r.ticket==='전문반';});
+    var amt=payRecs.reduce(function(s,r){return s+r.amt;},0)+waterRecs.reduce(function(s,r){return s+r.amt;},0);
+    // 인원: 결제 이름 유니크 + 티켓차감 유니크 + 전문반
+    var pplSet=new Set();
+    payRecs.forEach(function(r){if(r.name)pplSet.add(r.name);});
+    proRecs.forEach(function(r){if(r.name)pplSet.add(r.name+'_pro');});
+    if(deductByDate[d]) deductByDate[d].forEach(function(n){pplSet.add(n+'_tkt');});
+    var ppl=pplSet.size;
+    var dow=new Date(d+'T00:00:00').getDay();
+    var dowLabel=['일','월','화','수','목','금','토'][dow];
+    rows.push({d,day,dow,dowLabel,amt,ppl,payRecs,proRecs,deductCnt:deductByDate[d]?deductByDate[d].size:0});
+  }
+
+  var isAmt=_ddMode==='amt';
+  var maxVal=Math.max.apply(null,rows.map(function(r){return isAmt?r.amt:r.ppl;}))||1;
+
+  // 테이블 렌더
+  var tableHtml='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr>'
+    +'<th style="padding:6px 8px;text-align:left;color:#888;font-weight:500;border-bottom:1px solid #f0f0ee;white-space:nowrap">날짜</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:#888;font-weight:500;border-bottom:1px solid #f0f0ee">요일</th>'
+    +(isAmt
+      ?'<th style="padding:6px 8px;text-align:right;color:#888;font-weight:500;border-bottom:1px solid #f0f0ee">매출</th>'
+      :'<th style="padding:6px 8px;text-align:right;color:#888;font-weight:500;border-bottom:1px solid #f0f0ee">수강인원</th>')
+    +'<th style="padding:6px 8px;color:#888;font-weight:500;border-bottom:1px solid #f0f0ee;width:80px"></th>'
+    +'</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    if(!r.amt&&!r.ppl){
+      // 매출·인원 없는 날 — 흐리게
+      tableHtml+='<tr style="opacity:0.35">'
+        +'<td style="padding:5px 8px;color:#bbb">'+r.d.slice(5)+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;color:#bbb">'+r.dowLabel+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;color:#bbb">—</td>'
+        +'<td></td></tr>';
+      return;
+    }
+    var val=isAmt?r.amt:r.ppl;
+    var pct=Math.round(val/maxVal*100);
+    var barColor=r.dow===0||r.dow===6?'#ea80fc':'#204828';
+    var isSun=r.dow===0,isSat=r.dow===6;
+    var dowStyle=isSun?'color:#e24b4a':isSat?'color:#185fa5':'color:#555';
+    tableHtml+='<tr style="border-bottom:1px solid #f8f8f5">'
+      +'<td style="padding:5px 8px;font-weight:500;color:#1a1a1a">'+r.d.slice(5)+'</td>'
+      +'<td style="padding:5px 8px;text-align:center;'+dowStyle+'">'+r.dowLabel+'</td>'
+      +'<td style="padding:5px 8px;text-align:right;font-weight:600;color:#1a1a1a">'
+        +(isAmt?'₩'+r.amt.toLocaleString('ko-KR'):r.ppl+'명')+'</td>'
+      +'<td style="padding:5px 8px">'
+        +'<div style="height:6px;background:#f0f0ec;border-radius:3px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px;transition:width .3s"></div>'
+        +'</div>'
+        +(r.proRecs.length||r.deductCnt
+          ?'<div style="font-size:10px;color:#aaa;margin-top:2px">'
+            +(r.proRecs.length?'전문반 '+r.proRecs.length:'')
+            +(r.proRecs.length&&r.deductCnt?' · ':'')
+            +(r.deductCnt?'티켓 '+r.deductCnt:'')
+            +'</div>':''
+        )
+      +'</td></tr>';
+  });
+  tableHtml+='</tbody>';
+
+  // 월 합계 행
+  var totalAmt=rows.reduce(function(s,r){return s+r.amt;},0);
+  var totalPpl=rows.filter(function(r){return r.ppl>0;}).length; // 영업일 수
+  tableHtml+='<tfoot><tr style="border-top:2px solid #e8e8e4;background:#f9f9f8">'
+    +'<td colspan="2" style="padding:7px 8px;font-weight:700;color:#1a1a1a">월 합계</td>'
+    +'<td style="padding:7px 8px;text-align:right;font-weight:700;color:#204828">'
+    +(isAmt?'₩'+totalAmt.toLocaleString('ko-KR'):totalPpl+'일 영업')+'</td>'
+    +'<td style="padding:7px 8px;font-size:11px;color:#aaa">'
+    +(isAmt?'영업일 '+totalPpl+'일':'평균 '+Math.round(rows.filter(function(r){return r.ppl>0;}).reduce(function(s,r){return s+r.ppl;},0)/(totalPpl||1))+'명/일')
+    +'</td></tr></tfoot></table>';
+
+  wrap.innerHTML=tableHtml;
 }
 
 function renderTeacherList(){
