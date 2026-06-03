@@ -570,10 +570,17 @@ tr:hover td{background:#fafaf9}
                   </select>
                 </div>
                 <div id="pass-week-extra" style="display:none;flex:1;min-width:120px">
-                  <select id="f-pass-basic-weeks" class="pay-input" style="width:100%">
-                    <option value="4">4주 (4회) — ₩150,000</option>
-                    <option value="3">3주 (3회) — ₩110,000</option>
-                  </select>
+                  <input type="hidden" id="f-pass-basic-weeks" value="4">
+                  <div style="display:flex;gap:6px">
+                    <button type="button" onclick="applyBasicDiff(4)" id="basic-diff-4"
+                      style="flex:1;padding:8px 0;font-size:12px;font-family:inherit;border:1px solid #c4a8e8;border-radius:8px;background:#f5f0ff;color:#7b4fb5;font-weight:600;cursor:pointer">
+                      차액 4주 · 115,000
+                    </button>
+                    <button type="button" onclick="applyBasicDiff(3)" id="basic-diff-3"
+                      style="flex:1;padding:8px 0;font-size:12px;font-family:inherit;border:1px solid #c4a8e8;border-radius:8px;background:#f5f0ff;color:#7b4fb5;font-weight:600;cursor:pointer">
+                      차액 3주 · 75,000
+                    </button>
+                  </div>
                 </div>
                 <div id="pass-pro-extra" style="display:none;flex:1;min-width:140px">
                   <input type="month" id="f-pass-pro-month" class="pay-input" style="width:100%" title="전문반 수강 월">
@@ -4624,6 +4631,27 @@ window.searchStudent = function(query) {
       ${rowsHtml}
     </div>`;
   }).join('');
+};
+
+
+// 베이직 차액 결제
+window.applyBasicDiff = function(weeks) {
+  const amt = weeks === 4 ? 115000 : 75000;
+  fAmt = amt;
+  fPassType = 'basic';
+  // hidden input에 주수 저장
+  const inp = document.getElementById('f-pass-basic-weeks');
+  if (inp) inp.value = String(weeks);
+  updateAmtDisplay();
+  // 버튼 하이라이트
+  const b4 = document.getElementById('basic-diff-4');
+  const b3 = document.getElementById('basic-diff-3');
+  b4.style.background = weeks===4?'#7b4fb5':'#f5f0ff';
+  b4.style.color       = weeks===4?'#fff':'#7b4fb5';
+  b4.style.borderColor = weeks===4?'#7b4fb5':'#c4a8e8';
+  b3.style.background = weeks===3?'#7b4fb5':'#f5f0ff';
+  b3.style.color       = weeks===3?'#fff':'#7b4fb5';
+  b3.style.borderColor = weeks===3?'#7b4fb5':'#c4a8e8';
 };
 
 </script>
