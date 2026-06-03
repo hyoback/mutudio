@@ -440,6 +440,7 @@ tr:hover td{background:#fafaf9}
   <button class="main-tab active" onclick="switchMainTab('pay')">일반 결제 관리</button>
   <button class="main-tab" onclick="switchMainTab('pass')">다회권 관리</button>
   <button class="main-tab" onclick="switchMainTab('pro')">전문반 관리 <span style="font-size:10px;background:#faeeda;color:#854f0b;border-radius:4px;padding:1px 5px;font-weight:700;vertical-align:middle">TEST</span></button>
+  <button class="main-tab" onclick="switchMainTab('transfer')">이체 내역</button>
 </div>
 
 <!-- ══ 결제 관리 페이지 ══ -->
@@ -1000,6 +1001,108 @@ tr:hover td{background:#fafaf9}
   </div>
 </div>
 
+
+<!-- ══ 이체 내역 페이지 ══ -->
+<div id="page-transfer" style="display:none">
+<div style="max-width:900px;margin:0 auto;padding:24px 16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">이체 내역</div>
+      <div style="font-size:13px;color:#888;margin-top:2px">은행 거래내역을 불러와 결제 항목으로 등록하세요</div>
+    </div>
+    <button onclick="registerAllTransfer()" id="transfer-register-all-btn"
+      style="display:none;padding:9px 18px;background:#204828;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      ✅ 분류 완료 항목 일괄 등록
+    </button>
+  </div>
+
+  <!-- 입력 영역 -->
+  <div style="background:#fff;border:1px solid #e5e5e3;border-radius:14px;padding:20px;margin-bottom:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#444">📂 내역 불러오기</div>
+
+    <!-- 파일 업로드 -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;padding:9px 16px;background:#f5f5f4;border:1px dashed #ccc;border-radius:9px;cursor:pointer;font-size:13px;color:#555">
+        📎 엑셀 파일 업로드
+        <input type="file" id="transfer-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleTransferFile(this)">
+      </label>
+      <span style="font-size:12px;color:#bbb">또는</span>
+    </div>
+
+    <!-- 텍스트 붙여넣기 -->
+    <textarea id="transfer-paste-input" rows="5" placeholder="엑셀에서 내역 셀을 복사(Ctrl+C)한 뒤 여기에 붙여넣기 하세요&#10;예) 2026.06.03 01:02&#9;모바일&#9;최상규&#9;0&#9;400,000&#9;..." 
+      style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #e0e0da;border-radius:9px;font-size:12px;font-family:inherit;color:#333;resize:vertical;outline:none"
+      oninput="parseTransferText(this.value)"></textarea>
+    <div style="text-align:right;margin-top:8px">
+      <button onclick="parseTransferText(document.getElementById('transfer-paste-input').value)"
+        style="padding:7px 16px;background:#204828;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">불러오기</button>
+    </div>
+  </div>
+
+  <!-- 결과 목록 -->
+  <div id="transfer-list-wrap" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700">파싱된 내역 <span id="transfer-count" style="color:#204828"></span></div>
+      <div style="font-size:12px;color:#aaa">항목을 눌러 분류하세요</div>
+    </div>
+    <div id="transfer-list"></div>
+  </div>
+</div>
+</div>
+
+<!-- 이체 분류 모달 -->
+<div id="transfer-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px" id="tm-name"></div>
+    <div style="font-size:13px;color:#888;margin-bottom:20px" id="tm-info"></div>
+
+    <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px">분류 선택</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="tm-cats">
+      <button onclick="selectTransferCat('1회권',10000)" class="tm-cat-btn">1회권 · 1만</button>
+      <button onclick="selectTransferCat('4회권',160000)" class="tm-cat-btn">4회권 · 16만</button>
+      <button onclick="selectTransferCat('8회권',280000)" class="tm-cat-btn">8회권 · 28만</button>
+      <button onclick="openTransferBasicPicker(150000,'4주')" class="tm-cat-btn">베이직 4주 · 15만</button>
+      <button onclick="openTransferBasicPicker(110000,'3주')" class="tm-cat-btn">베이직 3주 · 11만</button>
+      <button onclick="selectTransferCat('전문반',700000)" class="tm-cat-btn">전문반 · 70만</button>
+      <button onclick="openTransferBasicPicker(35000,'예약금')" class="tm-cat-btn">예약금 · 3.5만</button>
+      <button onclick="selectTransferCat('뮤스테이지',400000)" class="tm-cat-btn">뮤스테이지 · 40만</button>
+      <button onclick="selectTransferCat('뮤스테이지 예약금',40000)" class="tm-cat-btn">뮤스테이지 예약금 · 4만</button>
+      <button onclick="selectTransferCat('뮤스테이지 차액',360000)" class="tm-cat-btn">뮤스테이지 차액 · 36만</button>
+      <button onclick="selectTransferCat('기타',0)" class="tm-cat-btn">기타 (금액 그대로)</button>
+    </div>
+
+    <!-- 베이직 강사 선택 (숨김) -->
+    <div id="tm-basic-picker" style="display:none;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px">강사 선택</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="confirmTransferBasic('WANNA')" class="tm-cat-btn">WANNA</button>
+        <button onclick="confirmTransferBasic('EVE')" class="tm-cat-btn">EVE</button>
+        <button onclick="confirmTransferBasic('YENI CHO')" class="tm-cat-btn">YENI CHO</button>
+        <button onclick="confirmTransferBasic('HYOS')" class="tm-cat-btn">HYOS</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button onclick="closeTransferModal()" style="flex:1;padding:10px;border:1px solid #e0e0da;border-radius:9px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit">취소</button>
+      <button onclick="skipTransferItem()" style="flex:1;padding:10px;border:none;border-radius:9px;background:#f5f5f4;color:#888;font-size:13px;cursor:pointer;font-family:inherit">건너뛰기</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.transfer-card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.12s}
+.transfer-card:hover{border-color:#204828;background:#f5faf7}
+.transfer-card.classified{border-color:#a8d5c2;background:#f0faf5;cursor:default}
+.transfer-card.skipped{opacity:.4;cursor:default}
+.transfer-amt{font-size:18px;font-weight:700;color:#1a1a1a;min-width:80px;text-align:right}
+.transfer-name{font-size:15px;font-weight:600}
+.transfer-time{font-size:12px;color:#aaa}
+.transfer-tag{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+.tm-cat-btn{padding:10px;border:1px solid #e0e0da;border-radius:9px;background:#f5f5f4;font-size:12px;font-family:inherit;cursor:pointer;transition:.1s}
+.tm-cat-btn:hover{background:#204828;color:#fff;border-color:#204828}
+.tm-cat-btn.selected{background:#204828;color:#fff;border-color:#204828}
+</style>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -1030,11 +1133,14 @@ function switchMainTab(id){
   tabs[0].classList.toggle('active',id==='pay');
   tabs[1].classList.toggle('active',id==='pass');
   tabs[2].classList.toggle('active',id==='pro');
+  tabs[3].classList.toggle('active',id==='transfer');
   document.getElementById('page-pay').style.display=(id==='pay')?'block':'none';
   document.getElementById('page-pass').style.display=(id==='pass')?'block':'none';
   document.getElementById('page-pro').style.display=(id==='pro')?'block':'none';
+  document.getElementById('page-transfer').style.display=(id==='transfer')?'block':'none';
   if(id==='pay') updatePayStats();
   if(id==='pro') renderProMembers();
+  if(id==='transfer') renderTransferPage();
   renderTodayWidget();
   if(typeof updateTopBtnVisibility==='function') updateTopBtnVisibility();
 }
@@ -1529,81 +1635,77 @@ const TEACHER_KEY='mutudio_teachers_v2';
 // cat: regular=정규, basic=베이직, popup=팝업, beginner=비기너, kpop=K-POP
 window.TIMETABLE = {
   0:[// 일
-    {t:'SYA',        cat:'K-POP',  time:'4:30'},
+    {t:'CHAERIN',    cat:'K-POP',  time:'4:10'},
     {t:'LEEKO',      cat:'비기너', time:'4:50'},
-    {t:'PITU',       cat:'팝업',   time:'5:30'},
-    {t:'RENYO',      cat:'팝업',   time:'5:30'},
-    {t:'DAIM',       cat:'팝업',   time:'5:30'},
-    {t:'SUHWA',      cat:'팝업',   time:'5:30'},
     {t:'JUJU',       cat:'정규',   time:'5:50'},
     {t:'GOOSEUL',    cat:'정규',   time:'7:00'},
     {t:'HYOS',       cat:'베이직', time:'7:20'},
-    {t:'JIOH',       cat:'팝업',   time:'8:20'},
+    {t:'NOAH',       cat:'팝업',   time:'7:20'},
+    {t:'BELIEVE X REALEE', cat:'팝업', time:'7:20'},
+    {t:'HALO',       cat:'팝업',   time:'8:20'},
     {t:'JIA',        cat:'팝업',   time:'8:20'},
   ],
   1:[// 월
     {t:'MANDUCK',    cat:'정규',   time:'6:10'},
     {t:'LINY',       cat:'정규',   time:'7:20'},
     {t:'WANNA',      cat:'베이직', time:'7:30'},
-    {t:'HYOS',       cat:'팝업',   time:'8:40'},
     {t:'MINA MYOUNG',cat:'팝업',   time:'8:40'},
-    {t:'SIR',        cat:'팝업',   time:'8:40'},
+    {t:'EDDIE',      cat:'팝업',   time:'8:40'},
+    {t:'AZHA',       cat:'팝업',   time:'8:40'},
+    {t:'HAIAN',      cat:'팝업',   time:'8:40'},
+    {t:'AUSTIN',     cat:'팝업',   time:'8:40'},
   ],
   2:[// 화
-    {t:'CHAERIN',      cat:'K-POP',  time:'6:00'},
+    {t:'REALEE X LETDO', cat:'팝업',  time:'6:00'},
     {t:'HINARI',       cat:'정규',   time:'6:10'},
-    {t:'BUCKEY',       cat:'팝업',   time:'7:20'},
-    {t:'KUNA',         cat:'팝업',   time:'7:20'},
-    {t:'PITU',         cat:'팝업',   time:'7:20'},
+    {t:'HOWWL',        cat:'팝업',   time:'7:20'},
+    {t:'SSONG',        cat:'팝업',   time:'7:20'},
     {t:'TEDDY',        cat:'정규',   time:'7:30'},
-    {t:'HYNN',         cat:'팝업',   time:'8:40'},
-    {t:'NOHWON X SSONG', cat:'팝업', time:'8:40'},
+    {t:'BUCKEY',       cat:'팝업',   time:'8:40'},
+    {t:'PITU',         cat:'팝업',   time:'8:40'},
+    {t:'FUNKY Y',      cat:'팝업',   time:'8:40'},
+    {t:'MINA MYOUNG',  cat:'팝업',   time:'8:40'},
     {t:'EVE',          cat:'베이직', time:'8:50'},
   ],
   3:[// 수
     {t:'SSOJU',      cat:'정규',   time:'6:10'},
-    {t:'NATTY',      cat:'팝업',   time:'7:20'},
-    {t:'KAAN',       cat:'팝업',   time:'7:20'},
     {t:'HYOS',       cat:'팝업',   time:'7:20'},
-    {t:'BUCKEY',     cat:'팝업',   time:'7:20'},
+    {t:'AUSTIN',     cat:'팝업',   time:'7:20'},
     {t:'EVE',        cat:'정규',   time:'7:30'},
     {t:'YENI CHO',   cat:'베이직', time:'8:40'},
-    {t:'LETDO X PITU', cat:'팝업', time:'8:40'},
   ],
   4:[// 목
+    {t:'BETCHA',     cat:'정규',   time:'6:00'},
     {t:'SOPHIEHEN',  cat:'정규',   time:'6:10'},
     {t:'LEEKO',      cat:'정규',   time:'7:20'},
     {t:'MINNY PARK', cat:'정규',   time:'7:30'},
-    {t:'MAAIN',      cat:'팝업',   time:'7:30'},
-    {t:'HALO',       cat:'팝업',   time:'7:30'},
     {t:'CHOCOL',     cat:'정규',   time:'8:40'},
   ],
   5:[// 금
     {t:'ASME',       cat:'비기너', time:'6:10'},
     {t:'REALEE',     cat:'정규',   time:'7:20'},
-    {t:'HION',       cat:'팝업',   time:'7:30'},
     {t:'JUNGWOO',    cat:'정규',   time:'7:30'},
+    {t:'NEON',       cat:'팝업',   time:'7:30'},
+    {t:'NANA',       cat:'팝업',   time:'7:30'},
     {t:'JJ',         cat:'정규',   time:'8:40'},
-    {t:'FUNKY Y',    cat:'팝업',   time:'8:40'},
     {t:'YENI CHO',   cat:'정규',   time:'8:50'},
   ],
   6:[// 토
     {t:'SYA',            cat:'K-POP',  time:'4:10'},
     {t:'REALEE',         cat:'비기너', time:'4:50'},
+    {t:'JISEOK',         cat:'팝업',   time:'5:30'},
+    {t:'LEENA',          cat:'팝업',   time:'5:30'},
     {t:'MINA MYOUNG',    cat:'비기너', time:'5:30'},
-    {t:'AZHA X ARMSEOK', cat:'팝업',   time:'5:30'},
-    {t:'HYOS X COI',     cat:'팝업',   time:'5:30'},
     {t:'LETDO',          cat:'정규',   time:'5:50'},
-    {t:'HANNAH',         cat:'팝업',   time:'7:00'},
     {t:'BELIEVE',        cat:'정규',   time:'7:00'},
-    {t:'GUMA',           cat:'팝업',   time:'7:20'},
     {t:'HAIAN',          cat:'팝업',   time:'7:20'},
-    {t:'AUSTIN',         cat:'팝업',   time:'7:20'},
-    {t:'TEDDY X KAAN',   cat:'팝업',   time:'8:20'},
-    {t:'SSONG',          cat:'팝업',   time:'8:20'},
-    {t:'ROSY',           cat:'팝업',   time:'8:20'},
-    {t:'PIKI',           cat:'팝업',   time:'8:20'},
-    {t:'HALO',           cat:'팝업',   time:'8:20'},
+    {t:'DOTTA',          cat:'팝업',   time:'7:20'},
+    {t:'HYOS',           cat:'팝업',   time:'7:20'},
+    {t:'RENYO',          cat:'팝업',   time:'7:20'},
+    {t:'AZHA X ARMSEOK', cat:'팝업',   time:'8:20'},
+    {t:'FUNKY Y',        cat:'팝업',   time:'8:20'},
+    {t:'WELSHY',         cat:'팝업',   time:'8:20'},
+    {t:'JJ',             cat:'비기너', time:'8:20'},
   ],
 };
 
@@ -1883,9 +1985,10 @@ function showPassRegWrap(passType){
     wrap.style.background='#f5f0ff';
     wrap.style.borderColor='#c4a8e8';
     label.style.color='#7b4fb5';
-    label.textContent='🎓 전문반 등록 / 재결제';
+    label.textContent='🎓 전문반 신규 등록';
     hint.style.color='#9c6fdb';
-    hint.textContent='결제 등록 시 전문반(proMembers)에 자동 등록됩니다. 이미 등록된 경우 다음 달로 연장됩니다.';
+    hint.textContent='신규 등록 전용입니다. 재결제·연장은 전문반 관리 탭에서 해주세요.';
+    // PRO 칩 클릭 시 이미 fAmt=700000 자동 세팅됨 (selectTicket에서 처리)
     // 기본값: 이번 달
     const monthEl=document.getElementById('f-pass-pro-month');
     if(monthEl&&!monthEl.value) monthEl.value=new Date().toISOString().slice(0,7);
@@ -1992,17 +2095,21 @@ async function addPayRecord(){
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
   if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
 
-  // ── 전문반 수강 처리 ──
+  // ── 전문반 결제/수강 처리 ──
   if(isPro){
-    if(!fTeacher){alert('수업(강사)을 먼저 선택해 주세요.');return;}
-    const ok=await (window.proDeductForPay||(async()=>true))(name,date,fTeacher,fCat);
-    if(!ok)return;
+    const proAmt=fAmt||0;
+    const proPay=fPay||'카드';
+    // 전문반 신규/재등록: proMembers에 추가 또는 수강 차감
+    const proResult=await (window.proPayAndDeduct||(async()=>({ok:true,isNew:false})))(name,date,fTeacher,fCat,proAmt,proPay);
+    if(!proResult||!proResult.ok)return;
     const now=new Date();
     const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:'전문반',amt:0,pay:'전문반',note};
-    savePayToFirebase(rec);savePay();
+    const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat||'전문반',ticket:'전문반',amt:proAmt,pay:proPay,note};
+    await savePayToFirebase(rec);
+    savePay();
     clearPayForm();
-    window.toast&&window.toast(`${name}님 전문반 수강 기록 완료 ✅`);
+    const msg=proResult.isNew?`${name}님 전문반 신규 등록 완료 🎉`:`${name}님 전문반 수강 기록 완료 ✅`;
+    window.toast&&window.toast(msg);
     if(window.updatePayStats) window.updatePayStats();
     return;
   }
@@ -3289,6 +3396,15 @@ function renderDailyClosing(recs, date){
       teacherMap[h.teacher].ticketStudents.push({name:m.name});
     });
   });
+  // 전문반 수강생 (proMembers attendance 기준)
+  (window.proMembers||[]).forEach(m=>{
+    (m.attendance||[]).filter(a=>(a.date||a)===date&&a.teacher).forEach(a=>{
+      ensureTeacher(a.teacher);
+      teacherMap[a.teacher].cnt++;
+      if(a.cat) teacherMap[a.teacher].cats.add(a.cat);
+      teacherMap[a.teacher].payStudents.push({name:m.name,pay:'전문반',amt:0,isPro:true});
+    });
+  });
   const CAT_LABEL_MAP={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
   const teacherRows=Object.entries(teacherMap)
     .sort((a,b)=>b[1].cnt-a[1].cnt)
@@ -3695,7 +3811,10 @@ waitDb(db=>{
         }).join('')
         :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">수강 이력 없음</div>`;
 
-      const renewBtn=!isArchive?`<button class="pro-renew-btn" onclick="openProRenew('${m.id}')">🔄 다음 달 연장 등록</button>`:'';
+      // 아카이브: 다음달 연장등록 / 활성: 이번달 재결제 모두 표시
+      const renewBtn=isArchive
+        ?`<button class="pro-renew-btn" onclick="openProRenew('${m.id}')">🔄 다음 달 연장 등록</button>`
+        :`<button class="pro-renew-btn" style="background:#1a6b4a" onclick="openProRepay('${m.id}')">💳 이번 달 재결제</button>`;
 
       return `<div class="pro-member-card ${cardCls}">
         <div class="card-top" style="margin-bottom:10px">
@@ -3874,23 +3993,103 @@ waitDb(db=>{
   };
 
   // ── 다음 달 연장 등록 ──
+  // ── 전문반 결제 모달 (연장/재결제 공통) ──
+  function openProPayModal({id, targetYm, isRepay}){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const label=monthLabel(targetYm);
+    const existing=document.getElementById('pro-pay-modal');
+    if(existing)existing.remove();
+
+    const overlay=document.createElement('div');
+    overlay.id='pro-pay-modal';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML=`
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;width:320px;max-width:92vw">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">${m.name}님 전문반 ${isRepay?'재결제':'연장 등록'}</div>
+        <div style="font-size:13px;color:#888;margin-bottom:20px">${label}</div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 금액</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          ${[700000,600000,500000].map(v=>`
+            <button onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';document.getElementById('pro-pay-amt').value=${v}"
+              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:#f0f0f0;font-size:14px;font-weight:600;cursor:pointer">
+              ${(v/10000).toFixed(0)}만
+            </button>`).join('')}
+          <input id="pro-pay-amt" type="number" placeholder="직접 입력" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:14px;min-width:90px">
+        </div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 방법</div>
+        <div style="display:flex;gap:8px;margin-bottom:24px" id="pro-pay-method-btns">
+          ${['카드','이체','현금'].map((p,i)=>`
+            <button onclick="document.getElementById('pro-pay-method-btns').querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';this.dataset.selected='1'"
+              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:${i===0?'#204828':'#f0f0f0'};color:${i===0?'#fff':'#333'};font-size:14px;cursor:pointer" data-pay="${p}" ${i===0?'data-selected=1':''}>
+              ${p}
+            </button>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="document.getElementById('pro-pay-modal').remove()"
+            style="flex:1;padding:11px;border:none;border-radius:9px;background:#f0f0f0;font-size:14px;cursor:pointer">취소</button>
+          <button onclick="confirmProPay('${id}','${targetYm}',${isRepay?'true':'false'})"
+            style="flex:1;padding:11px;border:none;border-radius:9px;background:#204828;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+            ${isRepay?'재결제 완료':'연장 등록 완료'}
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    // 기본 70만원 선택
+    overlay.querySelector('button').click();
+  }
+
+  window.confirmProPay=async function(id,targetYm,isRepay){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const amtEl=document.getElementById('pro-pay-amt');
+    const amt=parseInt(amtEl?.value||0);
+    if(!amt||amt<=0){alert('금액을 입력해 주세요.');return;}
+    const payBtn=document.getElementById('pro-pay-method-btns')?.querySelector('[data-selected]');
+    const pay=payBtn?.dataset?.pay||'카드';
+    const label=monthLabel(targetYm);
+
+    // 중복 확인 (연장의 경우)
+    if(!isRepay){
+      const dup=proMembers.find(x=>x.name===m.name&&x.month===targetYm);
+      if(dup){window.toast&&window.toast(`이미 ${label}에 등록되어 있습니다.`);document.getElementById('pro-pay-modal')?.remove();return;}
+    }
+
+    const today=new Date().toISOString().split('T')[0];
+    const now=new Date();
+    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+    // payRecord 저장
+    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher:'',cat:'전문반',ticket:'전문반',amt,pay,note:isRepay?`${label} 재결제`:`${label} 연장등록`};
+    await savePayToFirebase(rec);
+    savePay();
+
+    // proMembers 문서 생성 (연장) or 유지 (재결제)
+    if(!isRepay){
+      await addDoc(collection(db,'proMembers'),{
+        name:m.name,phone:m.phone||'',month:targetYm,memo:m.memo||'',
+        attendance:[],fixedAttend:{},createdAt:serverTimestamp()
+      });
+    }
+
+    document.getElementById('pro-pay-modal')?.remove();
+    if(window.updatePayStats) window.updatePayStats();
+    window.toast&&window.toast(`${m.name}님 ${label} ${isRepay?'재결제':'연장 등록'} 완료! 🎉 (${(amt/10000).toFixed(0)}만원 / ${pay})`);
+  };
+
   window.openProRenew=function(id){
     const m=proMembers.find(x=>x.id===id);if(!m)return;
     const curYm=m.month||thisMonth();
     const[y,mo]=curYm.split('-').map(Number);
-    const nextDate=new Date(y,mo,1); // 다음 달 1일
-    const nextYm=nextDate.toISOString().slice(0,7);
-    const nextLabel=monthLabel(nextYm);
-    if(!confirm(`${m.name}님을 ${nextLabel} 전문반으로 연장 등록할까요?\n(기존 ${monthLabel(curYm)} 이력은 유지됩니다)`))return;
-    // 중복 확인
-    const dup=proMembers.find(x=>x.name===m.name&&x.month===nextYm);
-    if(dup){window.toast&&window.toast(`이미 ${nextLabel}에 등록되어 있습니다.`);return;}
-    addDoc(collection(db,'proMembers'),{
-      name:m.name,phone:m.phone||'',month:nextYm,memo:m.memo||'',
-      attendance:[],fixedAttend:{},createdAt:serverTimestamp()
-    }).then(()=>{
-      window.toast&&window.toast(`${m.name}님 ${nextLabel} 연장 등록 완료! 🎉`);
-    });
+    const nextYm=new Date(y,mo,1).toISOString().slice(0,7);
+    openProPayModal({id,targetYm:nextYm,isRepay:false});
+  };
+
+  window.openProRepay=function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const curYm=m.month||thisMonth();
+    openProPayModal({id,targetYm:curYm,isRepay:true});
   };
 
   window.removeProAttend=async function(id,date,logId){
@@ -3907,19 +4106,46 @@ waitDb(db=>{
   };
 
   // ── 일반결제 탭 전문반 연동 ──
-  // togglePro() 에서 이름 입력 후 등록 시 자동 차감
-  window.proDeductForPay=async function(name,date,teacher,cat){
+  window.proPayAndDeduct=async function(name,date,teacher,cat,amt,pay){
     const ym=date.slice(0,7);
-    const matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
+    // 이번 달 전문반 등록 여부 확인
+    let matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
+    // 완전 일치 없으면 부분 일치
     if(!matched.length){
-      // 부분 일치 시도
       const partial=proMembers.filter(m=>m.month===ym&&(m.name||'').includes(name));
-      if(!partial.length){alert(`"${name}"님은 ${ym.replace('-','년 ')}월 전문반 수강생이 아닙니다.\n전문반 관리 탭에서 먼저 등록해 주세요.`);return false;}
-      if(partial.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return false;}
-      return await doProDeduct(partial[0],date,teacher,cat);
+      if(partial.length===1) matched=partial;
+      else if(partial.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
     }
-    if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return false;}
-    return await doProDeduct(matched[0],date,teacher,cat);
+    // 이번 달 미등록 → 전월 데이터로 신규 등록 (재결제)
+    if(!matched.length){
+      // 가장 최근 전문반 기록에서 phone/memo 가져오기
+      const prev=proMembers.filter(m=>(m.name||'')===name).sort((a,b)=>(b.month||'').localeCompare(a.month||''));
+      const phone=prev[0]?.phone||'';
+      const memo=prev[0]?.memo||'';
+      // 신규 proMembers 문서 생성
+      await addDoc(collection(db,'proMembers'),{
+        name,phone,month:ym,memo,
+        attendance:[],fixedAttend:{},
+        createdAt:serverTimestamp()
+      });
+      // 새로 추가된 멤버로 재조회
+      await new Promise(r=>setTimeout(r,600));
+      matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
+      if(!matched.length){
+        // Firestore 반영 전이면 가짜 객체로 진행 (수강 기록은 payRecord에만)
+        window.toast&&window.toast(`${name}님 ${ym.replace('-','년 ')}월 전문반 신규 등록됨`);
+        return {ok:true,isNew:true};
+      }
+    }
+    if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
+    const result=await doProDeduct(matched[0],date,teacher,cat);
+    return {ok:result,isNew:false};
+  };
+
+  // 기존 호환용
+  window.proDeductForPay=async function(name,date,teacher,cat){
+    const r=await window.proPayAndDeduct(name,date,teacher,cat,0,'전문반');
+    return r?.ok||false;
   };
 
   async function doProDeduct(m,date,teacher,cat){
@@ -4016,6 +4242,267 @@ waitDb(db=>{
 
   document.getElementById('pro-modal').addEventListener('click',function(e){if(e.target===this)window.closeProModal();});
 });
+
+// ══════════════════════════════════════════
+// 이체 내역 탭 로직
+// ══════════════════════════════════════════
+let transferItems = [];   // [{idx, date, time, name, amt, bank, cat, classified, skipped}]
+let transferModalIdx = -1;
+
+// 금액 기준 자동 추천
+function guessTransferCat(amt) {
+  if (amt === 700000) return '전문반';
+  if (amt === 280000) return '8회권';
+  if (amt === 160000) return '4회권';
+  if (amt === 150000) return '베이직 4주';
+  if (amt === 110000) return '베이직 3주';
+  if (amt === 35000)  return '예약금';
+  if (amt === 400000) return '뮤스테이지';
+  if (amt === 40000)  return '뮤스테이지 예약금';
+  if (amt === 360000) return '뮤스테이지 차액';
+  if (amt === 10000)  return '1회권';
+  return null;
+}
+
+// 텍스트 파싱 (엑셀 복사 붙여넣기)
+window.parseTransferText = function(raw) {
+  if (!raw.trim()) return;
+  const lines = raw.trim().split('\n').filter(l => l.trim());
+  const items = [];
+
+  lines.forEach((line, i) => {
+    const cols = line.split('\t').map(c => c.trim());
+    // 헤더 행 스킵
+    if (cols[0] === 'No.' || cols[1] === '거래일시') return;
+    // 날짜 패턴: 2026.06.03 01:02 또는 2026-06-03 01:02
+    const dtMatch = line.match(/(\d{4}[.\-]\d{2}[.\-]\d{2})\s+(\d{2}:\d{2})/);
+    if (!dtMatch) return;
+
+    const rawDate = dtMatch[1].replace(/\./g, '-');
+    const time = dtMatch[2];
+    // D열(기재내용) = 입금자명: 탭 기준 4번째 컬럼(index 3)
+    const name = cols[3] || cols[2] || '';
+    // F열(말기신금액): index 5
+    const amtStr = (cols[5] || cols[4] || '0').replace(/,/g, '');
+    const amt = parseInt(amtStr) || 0;
+    // H열(취급기관): index 7
+    const bank = cols[7] || '';
+
+    if (!name || amt <= 0) return;
+
+    items.push({
+      idx: items.length,
+      date: rawDate,
+      time,
+      name,
+      amt,
+      bank,
+      cat: guessTransferCat(amt),
+      classified: false,
+      skipped: false
+    });
+  });
+
+  if (!items.length) {
+    alert('파싱된 내역이 없습니다.\n엑셀에서 데이터 행만 선택해서 복사해 주세요.');
+    return;
+  }
+  transferItems = items;
+  renderTransferPage();
+  window.toast && window.toast(`${items.length}건 파싱 완료!`);
+};
+
+// 엑셀 파일 업로드 처리
+window.handleTransferFile = async function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  // SheetJS 사용
+  const XLSX = window.XLSX;
+  if (!XLSX) { alert('엑셀 파싱 라이브러리 로딩 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false});
+
+  const items = [];
+  rows.forEach(row => {
+    if (!row || row.length < 6) return;
+    // B열(index 1): 거래일시, D열(index 3): 기재내용, F열(index 5): 말기신금액
+    const dtRaw = (row[1] || '').toString().trim();
+    const name = (row[3] || '').toString().trim();
+    const amtRaw = (row[5] || '0').toString().replace(/,/g,'');
+    const bank = (row[7] || '').toString().trim();
+
+    const dtMatch = dtRaw.match(/(\d{4}[.\-]\d{2}[.\-]\d{2})\s+(\d{2}:\d{2})/);
+    if (!dtMatch || !name) return;
+    const amt = parseInt(amtRaw) || 0;
+    if (amt <= 0) return;
+
+    items.push({
+      idx: items.length,
+      date: dtMatch[1].replace(/\./g,'-'),
+      time: dtMatch[2],
+      name, amt, bank,
+      cat: guessTransferCat(amt),
+      classified: false,
+      skipped: false
+    });
+  });
+
+  if (!items.length) { alert('인식된 내역이 없습니다.'); return; }
+  transferItems = items;
+  renderTransferPage();
+  window.toast && window.toast(`${items.length}건 파싱 완료!`);
+};
+
+// 렌더링
+window.renderTransferPage = function() {
+  const wrap = document.getElementById('transfer-list-wrap');
+  const list = document.getElementById('transfer-list');
+  const countEl = document.getElementById('transfer-count');
+  const regBtn = document.getElementById('transfer-register-all-btn');
+  if (!wrap || !list) return;
+
+  if (!transferItems.length) { wrap.style.display = 'none'; regBtn.style.display = 'none'; return; }
+
+  wrap.style.display = 'block';
+  const done = transferItems.filter(i => i.classified).length;
+  const total = transferItems.length;
+  countEl.textContent = `${total}건 (분류완료 ${done}건)`;
+  regBtn.style.display = done > 0 ? 'inline-block' : 'none';
+
+  const CAT_COLOR = {'전문반':'#7b4fb5','8회권':'#204828','4회권':'#1d9e75','1회권':'#5b8a6a',
+    '베이직 4주':'#f5a623','베이직 3주':'#e8891a','예약금':'#4a90d9','기타':'#888'};
+
+  list.innerHTML = transferItems.map(item => {
+    const hint = item.cat ? `💡 ${item.cat} 추정` : '';
+    const tagHtml = item.classified
+      ? `<span class="transfer-tag" style="background:${CAT_COLOR[item.cat]||'#888'};color:#fff">${item.cat}</span>`
+      : item.skipped
+        ? `<span class="transfer-tag" style="background:#eee;color:#aaa">건너뜀</span>`
+        : hint ? `<span class="transfer-tag" style="background:#e8f5ee;color:#204828">${hint}</span>` : '';
+
+    const clickable = !item.classified && !item.skipped;
+    return `<div class="transfer-card ${item.classified?'classified':''} ${item.skipped?'skipped':''}"
+      ${clickable ? `onclick="openTransferModal(${item.idx})"` : ''}>
+      <div style="flex:1">
+        <div class="transfer-name">${item.name}</div>
+        <div class="transfer-time">${item.date} ${item.time} · ${item.bank}</div>
+      </div>
+      ${tagHtml}
+      <div class="transfer-amt">${item.amt.toLocaleString()}원</div>
+    </div>`;
+  }).join('');
+};
+
+// 분류 모달 열기
+window.openTransferModal = function(idx) {
+  const item = transferItems[idx];
+  if (!item) return;
+  transferModalIdx = idx;
+  document.getElementById('tm-name').textContent = item.name;
+  document.getElementById('tm-info').textContent =
+    `${item.date} ${item.time} · ${item.amt.toLocaleString()}원 · ${item.bank}`;
+
+  // 추정 카테고리 하이라이트
+  document.querySelectorAll('.tm-cat-btn').forEach(b => b.classList.remove('selected'));
+  if (item.cat) {
+    const btns = document.querySelectorAll('.tm-cat-btn');
+    btns.forEach(b => { if (b.textContent.startsWith(item.cat)) b.classList.add('selected'); });
+  }
+
+  const modal = document.getElementById('transfer-modal');
+  modal.style.display = 'flex';
+};
+
+window.closeTransferModal = function() {
+  document.getElementById('transfer-modal').style.display = 'none';
+  document.getElementById('tm-basic-picker').style.display = 'none';
+  document.getElementById('tm-cats').style.display = 'grid';
+  transferModalIdx = -1;
+  window._transferBasicAmt = null;
+  window._transferBasicWeeks = null;
+};
+
+// 베이직 버튼 클릭 → 강사 선택 레이어로 전환
+window.openTransferBasicPicker = function(amt, weeks) {
+  window._transferBasicAmt = amt;
+  window._transferBasicWeeks = weeks;
+  document.getElementById('tm-cats').style.display = 'none';
+  document.getElementById('tm-basic-picker').style.display = 'block';
+};
+
+// 강사 선택 완료
+window.confirmTransferBasic = function(teacher) {
+  const amt = window._transferBasicAmt || 150000;
+  const weeks = window._transferBasicWeeks || '4주';
+  const label = weeks === '예약금' ? `예약금 · ${teacher}` : `베이직 ${weeks} · ${teacher}`;
+  selectTransferCat(label, amt);
+  document.getElementById('tm-basic-picker').style.display = 'none';
+  document.getElementById('tm-cats').style.display = 'grid';
+};
+
+window.selectTransferCat = function(cat, suggestedAmt) {
+  if (transferModalIdx < 0) return;
+  const item = transferItems[transferModalIdx];
+  item.cat = cat;
+  item.classified = true;
+  item.skipped = false;
+  closeTransferModal();
+  renderTransferPage();
+};
+
+window.skipTransferItem = function() {
+  if (transferModalIdx < 0) return;
+  transferItems[transferModalIdx].skipped = true;
+  transferItems[transferModalIdx].classified = false;
+  closeTransferModal();
+  renderTransferPage();
+};
+
+// 일괄 등록
+window.registerAllTransfer = async function() {
+  const toRegister = transferItems.filter(i => i.classified);
+  if (!toRegister.length) { alert('분류 완료된 항목이 없습니다.'); return; }
+  if (!confirm(`분류 완료된 ${toRegister.length}건을 이체 결제로 등록할까요?`)) return;
+
+  const CAT_TICKET_MAP = {
+    '1회권':'1회', '4회권':'4회', '8회권':'8회',
+    '베이직 4주':'베이직', '베이직 3주':'베이직',
+    '전문반':'전문반', '예약금':'예약금', '기타':'기타'
+  };
+
+  for (const item of toRegister) {
+    const rec = {
+      id: Date.now() + Math.random(),
+      date: item.date,
+      time: item.time,
+      name: item.name,
+      teacher: '',
+      cat: item.cat,
+      ticket: CAT_TICKET_MAP[item.cat] || item.cat,
+      amt: item.amt,
+      pay: '이체',
+      note: `이체내역 자동등록 · ${item.bank}`
+    };
+    await savePayToFirebase(rec);
+    savePay();
+  }
+
+  // 등록 완료 항목 목록에서 제거
+  transferItems = transferItems.filter(i => !i.classified);
+  renderTransferPage();
+  if (window.updatePayStats) window.updatePayStats();
+  window.toast && window.toast(`${toRegister.length}건 이체 결제 등록 완료! ✅`);
+};
+
+// SheetJS 로드
+if (!window.XLSX) {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  document.head.appendChild(s);
+}
+
 </script>
 </body>
 </html>
