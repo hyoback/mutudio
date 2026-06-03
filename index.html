@@ -432,7 +432,27 @@ tr:hover td{background:#fafaf9}
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:12px;color:#aaa" id="last-sync"></span>
-    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v18</span>
+    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v24</span>
+    <button onclick="openStudentSearch()" title="수강생 검색"
+      style="padding:7px 14px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;color:#555;display:flex;align-items:center;gap:6px">
+      <span style="font-size:17px">🔍</span> 수강생 검색
+    </button>
+  </div>
+</div>
+
+<!-- 수강생 검색 오버레이 -->
+<div id="student-search-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:flex-start;justify-content:center;padding-top:60px">
+  <div style="background:#fff;border-radius:16px;width:560px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #f0f0ee;display:flex;gap:10px;align-items:center">
+      <input id="student-search-input" type="text" placeholder="수강생 이름 검색..."
+        style="flex:1;padding:10px 14px;border:1px solid #e0e0da;border-radius:10px;font-size:15px;font-family:inherit;outline:none"
+        oninput="searchStudent(this.value)">
+      <button onclick="closeStudentSearch()"
+        style="padding:8px 14px;border:none;background:#f0f0ee;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;color:#555">닫기</button>
+    </div>
+    <div id="student-search-results" style="overflow-y:auto;padding:12px 20px 20px">
+      <div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">이름을 입력하세요</div>
+    </div>
   </div>
 </div>
 
@@ -526,7 +546,7 @@ tr:hover td{background:#fafaf9}
               <div class="amt-chip" onclick="setAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
               <div class="amt-chip" onclick="selectBasicMonthlyPass(this)" id="chip-basic"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
               <div class="amt-chip" onclick="selectReservation(this)" id="chip-reserve" style="border-color:#9c6fdb"><span class="ac-name" style="color:#7b4fb5">예약금</span><span class="ac-val" style="color:#7b4fb5">+35,000</span></div>
-              <div class="amt-chip" onclick="selectTicket(this,'pro',700000)" id="chip-pro"><span class="ac-name">PRO</span><span class="ac-val">+700,000</span></div>
+              <div class="amt-chip" onclick="selectTicket(this,'pro',700000)" id="chip-pro"><span class="ac-name">PRO (신규)</span><span class="ac-val">+700,000</span></div>
               <div class="amt-chip" onclick="addWater()" style="border-color:#5aaadc"><span class="ac-name" style="color:#2176ae">물 💧</span><span class="ac-val" style="color:#2176ae">+1,000</span></div>
             </div>
             <div style="display:flex;gap:6px;margin-top:6px">
@@ -2366,8 +2386,8 @@ function buildPayTable(data){
         <td style="color:#aaa;font-size:11px">${r.time||''}</td>
         <td style="font-weight:500">${r.name}${isPro?'<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f5f0ff;color:#7b4fb5;font-weight:700;margin-left:4px;vertical-align:middle">PRO</span>':''}</td>
         <td style="color:#888;font-size:11px">${r.teacher||'—'}</td>
-        <td style="font-size:11px;color:#555">${r.cat||'—'}</td>
-        <td>${isTicket?'<span style="font-size:11px;color:#888">🎫 차감</span>':isPro?'<span style="font-size:11px;color:#7b4fb5;font-weight:600">전문반 수강</span>':ticketBadge(r.ticket)}</td>
+        <td style="font-size:11px;color:#555;max-width:90px;word-break:keep-all;line-height:1.4">${r.cat||'—'}</td>
+        <td style="max-width:90px;word-break:keep-all;line-height:1.4">${isTicket?'<span style="font-size:11px;color:#888">🎫 차감</span>':isPro?'<span style="font-size:11px;color:#7b4fb5;font-weight:600">전문반 수강</span>':ticketBadge(r.ticket)}</td>
         <td>${amtCell}</td>
         <td>${payCell}</td>
         <td style="color:#aaa;font-size:11px;width:60px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
@@ -4502,6 +4522,109 @@ if (!window.XLSX) {
   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   document.head.appendChild(s);
 }
+
+
+// ══════════════════════════════════════════
+// 수강생 검색
+// ══════════════════════════════════════════
+window.openStudentSearch = function() {
+  const overlay = document.getElementById('student-search-overlay');
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('student-search-input').focus(), 100);
+};
+
+window.closeStudentSearch = function() {
+  document.getElementById('student-search-overlay').style.display = 'none';
+  document.getElementById('student-search-input').value = '';
+  document.getElementById('student-search-results').innerHTML =
+    '<div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">이름을 입력하세요</div>';
+};
+
+// ESC로 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeStudentSearch();
+});
+
+window.searchStudent = function(query) {
+  const q = query.trim();
+  const el = document.getElementById('student-search-results');
+  if (!q) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">이름을 입력하세요</div>';
+    return;
+  }
+
+  // payRecords에서 이름 검색
+  const recs = (window.payRecords || [])
+    .filter(r => r.name && r.name.includes(q))
+    .sort((a, b) => (b.date + (b.time||'')).localeCompare(a.date + (a.time||'')));
+
+  // members history에서 티켓 차감 이력
+  const ticketRecs = [];
+  (window.members || []).filter(m => m.name && m.name.includes(q)).forEach(m => {
+    (m.history || []).forEach(h => {
+      ticketRecs.push({
+        date: h.date, time: h.time||'',
+        name: m.name, teacher: h.teacher||'', cat: h.cat||'',
+        ticket: '티켓차감', amt: 0, pay: 'ticket', note: `잔여 ${h.remaining??''}회`
+      });
+    });
+  });
+
+  // proMembers 수강 이력
+  const proRecs = [];
+  (window.proMembers || []).filter(m => m.name && m.name.includes(q)).forEach(m => {
+    (m.attendance || []).forEach(a => {
+      proRecs.push({
+        date: a.date||'', time: a.time||'',
+        name: m.name, teacher: a.teacher||'', cat: a.cat||'',
+        ticket: '전문반', amt: 0, pay: 'pro', note: `${m.month} 전문반`
+      });
+    });
+  });
+
+  const all = [...recs, ...ticketRecs, ...proRecs]
+    .sort((a, b) => (b.date + (b.time||'')).localeCompare(a.date + (a.time||'')));
+
+  if (!all.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">"${q}" 검색 결과 없음</div>`;
+    return;
+  }
+
+  // 이름별 그룹
+  const names = [...new Set(all.map(r => r.name))];
+
+  el.innerHTML = names.map(name => {
+    const rows = all.filter(r => r.name === name);
+    const totalAmt = rows.filter(r => r.amt > 0).reduce((s, r) => s + r.amt, 0);
+
+    const rowsHtml = rows.map(r => {
+      let typeBadge = '';
+      if (r.pay === 'ticket') typeBadge = '<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#e1f5ee;color:#0f6e56;font-weight:600">티켓</span>';
+      else if (r.pay === 'pro') typeBadge = '<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#f5f0ff;color:#7b4fb5;font-weight:600">전문반</span>';
+      else if (r.pay === '카드') typeBadge = '<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#faeeda;color:#854f0b;font-weight:600">카드</span>';
+      else if (r.pay === '이체') typeBadge = '<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#e8f0fe;color:#1a56db;font-weight:600">이체</span>';
+      else if (r.pay === '현금') typeBadge = '<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:600">현금</span>';
+
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f5f5f3">
+        <div style="font-size:11px;color:#aaa;min-width:88px">${r.date} ${r.time}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:#333">${r.teacher||'—'} <span style="color:#aaa;font-weight:400">${r.cat||''}</span></div>
+          <div style="font-size:11px;color:#aaa">${r.note||''}</div>
+        </div>
+        ${typeBadge}
+        <div style="font-size:13px;font-weight:600;min-width:56px;text-align:right;color:${r.amt>0?'#1a1a1a':'#ccc'}">${r.amt>0?r.amt.toLocaleString()+'원':'—'}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:16px;font-weight:700">${name}</div>
+        <div style="font-size:12px;color:#888">총 ${rows.length}건 · ${totalAmt>0?totalAmt.toLocaleString()+'원':'-'}</div>
+      </div>
+      ${rowsHtml}
+    </div>`;
+  }).join('');
+};
 
 </script>
 </body>
