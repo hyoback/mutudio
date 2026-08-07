@@ -1130,6 +1130,67 @@ tr:hover td{background:#fafaf9}
 .tm-cat-btn.selected{background:#204828;color:#fff;border-color:#204828}
 </style>
 
+
+<!-- ══ 환불 모달 ══ -->
+<div id="refund-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:26px 24px;width:360px;max-width:94vw">
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px;color:#e24b4a">💸 환불 처리</div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:20px">환불 내역은 별도 보관되며 정산에서 차감됩니다</div>
+
+    <!-- 원결제 정보 -->
+    <div style="background:#fafaf9;border:1px solid #f0f0ee;border-radius:10px;padding:12px 14px;margin-bottom:18px">
+      <div style="font-size:11px;color:#aaa;margin-bottom:6px">원결제 정보</div>
+      <div style="font-size:14px;font-weight:700" id="rf-name"></div>
+      <div style="font-size:12px;color:#888;margin-top:2px" id="rf-origin-info"></div>
+    </div>
+
+    <!-- 환불 금액 -->
+    <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">환불 금액</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button onclick="setRefundFull()" id="rf-full-btn"
+        style="flex:1;padding:8px 0;border:1px solid #e24b4a;border-radius:8px;background:#fff5f5;color:#e24b4a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+        전액 환불
+      </button>
+      <input type="number" id="rf-amt" placeholder="직접 입력 (원)"
+        style="flex:2;padding:8px 12px;border:1px solid #e0e0da;border-radius:8px;font-size:13px;font-family:inherit;outline:none"
+        oninput="document.getElementById('rf-full-btn').style.background='#fff5f5'">
+    </div>
+
+    <!-- 환불 방법 -->
+    <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">환불 방법</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px" id="rf-method-btns">
+      <button data-method="카드취소" onclick="selectRefundMethod('카드취소')"
+        style="flex:1;padding:8px 0;border:1px solid #e24b4a;border-radius:8px;background:#e24b4a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">카드취소</button>
+      <button data-method="이체" onclick="selectRefundMethod('이체')"
+        style="flex:1;padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">이체</button>
+      <button data-method="현금" onclick="selectRefundMethod('현금')"
+        style="flex:1;padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">현금</button>
+    </div>
+
+    <!-- 환불 사유 -->
+    <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">환불 사유</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px" id="rf-reason-btns">
+      <button data-reason="부상" onclick="selectRefundReason('부상')"
+        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">부상</button>
+      <button data-reason="개인사정" onclick="selectRefundReason('개인사정')"
+        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">개인사정</button>
+      <button data-reason="일정변경" onclick="selectRefundReason('일정변경')"
+        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">일정변경</button>
+      <button data-reason="기타" onclick="selectRefundReason('기타')"
+        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">기타</button>
+    </div>
+    <input type="text" id="rf-reason-text" placeholder="직접 입력 (선택)"
+      style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid #e0e0da;border-radius:8px;font-size:12px;font-family:inherit;outline:none;margin-bottom:18px">
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeRefundModal()"
+        style="flex:1;padding:11px;border:1px solid #e0e0da;border-radius:9px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit">취소</button>
+      <button onclick="confirmRefund()"
+        style="flex:1;padding:11px;border:none;border-radius:9px;background:#e24b4a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">환불 처리</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -2366,6 +2427,9 @@ function buildPayTable(data){
       const isTicket=r._isTicket;
       const isPro=r._isPro;
       const rowBg=isTicket?'background:#f0f8f2':isPro?'background:#fdf5ff':'';
+      // 환불됨 뱃지
+      const refundBadge=r.refunded
+        ?`<span style="font-size:10px;padding:1px 6px;border-radius:6px;background:#ffeaea;color:#e24b4a;font-weight:600;display:block;margin-top:2px">환불 ${r.refundAmt?(r.refundAmt.toLocaleString()+'원'):''}</span>`:'';
       const amtCell=isTicket
         ?'<span style="font-size:11px;color:#888">차감</span>'
         :(r.amt>0?`<span style="font-weight:500">${fmtW(r.amt)}</span>`:'<span style="color:#aaa">—</span>');
@@ -2376,7 +2440,7 @@ function buildPayTable(data){
         :payBadge(r.pay);
       const actionCell=isTicket
         ?`<button class="del-pay-btn" onclick="cancelTicketDeduct('${r._memberId}',${r._histId},'${r._memberName}',${r._memberRemaining})" style="color:#e24b4a">↩ 취소</button>`
-        :`<button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button>`;
+        :`<button class="del-pay-btn" onclick="openRefundModal('${r.id}')" style="color:#e24b4a;margin-right:2px">환불</button><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button>`;
       return`<tr style="${rowBg}">
         <td style="color:#888">${r.date}</td>
         <td style="color:#aaa;font-size:11px">${r.time||''}</td>
@@ -2384,7 +2448,7 @@ function buildPayTable(data){
         <td style="color:#888;font-size:11px">${r.teacher||'—'}</td>
         <td style="font-size:11px;color:#555;max-width:90px;word-break:keep-all;line-height:1.4">${r.cat||'—'}</td>
         <td style="max-width:90px;word-break:keep-all;line-height:1.4">${isTicket?'<span style="font-size:11px;color:#888">🎫 차감</span>':isPro?'<span style="font-size:11px;color:#7b4fb5;font-weight:600">전문반 수강</span>':ticketBadge(r.ticket)}</td>
-        <td>${amtCell}</td>
+        <td>${amtCell}${refundBadge}</td>
         <td>${payCell}</td>
         <td style="color:#aaa;font-size:11px;width:60px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'—'}</td>
         <td style="white-space:nowrap">${actionCell}</td>
@@ -4641,6 +4705,127 @@ window.applyBasicDiff = function(weeks) {
   b3.style.background = weeks===3?'#7b4fb5':'#f5f0ff';
   b3.style.color       = weeks===3?'#fff':'#7b4fb5';
   b3.style.borderColor = weeks===3?'#7b4fb5':'#c4a8e8';
+};
+
+
+// ══════════════════════════════════════════
+// 환불 처리
+// ══════════════════════════════════════════
+let refundTargetId = null;
+let refundMethod = '카드취소';
+
+window.openRefundModal = function(id) {
+  const r = (window.payRecords || []).find(x => String(x.id) === String(id));
+  if (!r) { alert('결제 내역을 찾을 수 없습니다.'); return; }
+  if (r.refunded) { alert('이미 환불 처리된 내역입니다.'); return; }
+
+  refundTargetId = id;
+  refundMethod = '카드취소';
+
+  document.getElementById('rf-name').textContent = r.name;
+  document.getElementById('rf-origin-info').textContent =
+    `${r.date} · ${r.ticket||r.cat||''} · ${(r.amt||0).toLocaleString()}원 · ${r.pay||''}`;
+
+  // 전액 기본 세팅
+  document.getElementById('rf-amt').value = r.amt || 0;
+
+  // 방법 버튼 초기화
+  document.querySelectorAll('#rf-method-btns button').forEach(b => {
+    const active = b.dataset.method === '카드취소';
+    b.style.background = active ? '#e24b4a' : '#f5f5f4';
+    b.style.color = active ? '#fff' : '#555';
+  });
+
+  // 사유 버튼 초기화
+  document.querySelectorAll('#rf-reason-btns button').forEach(b => {
+    b.style.background = '#f5f5f4';
+    b.style.color = '#555';
+    b.style.borderColor = '#e0e0da';
+  });
+  document.getElementById('rf-reason-text').value = '';
+
+  document.getElementById('refund-modal').style.display = 'flex';
+};
+
+window.closeRefundModal = function() {
+  document.getElementById('refund-modal').style.display = 'none';
+  refundTargetId = null;
+};
+
+window.setRefundFull = function() {
+  const r = (window.payRecords || []).find(x => String(x.id) === String(refundTargetId));
+  if (r) document.getElementById('rf-amt').value = r.amt || 0;
+  document.getElementById('rf-full-btn').style.background = '#fff5f5';
+};
+
+window.selectRefundMethod = function(method) {
+  refundMethod = method;
+  document.querySelectorAll('#rf-method-btns button').forEach(b => {
+    const active = b.dataset.method === method;
+    b.style.background = active ? '#e24b4a' : '#f5f5f4';
+    b.style.color = active ? '#fff' : '#555';
+  });
+};
+
+window.selectRefundReason = function(reason) {
+  document.querySelectorAll('#rf-reason-btns button').forEach(b => {
+    const active = b.dataset.reason === reason;
+    b.style.background = active ? '#555' : '#f5f5f4';
+    b.style.color = active ? '#fff' : '#555';
+    b.style.borderColor = active ? '#555' : '#e0e0da';
+  });
+  document.getElementById('rf-reason-text').value = reason;
+};
+
+window.confirmRefund = async function() {
+  const r = (window.payRecords || []).find(x => String(x.id) === String(refundTargetId));
+  if (!r) return;
+
+  const amt = parseInt(document.getElementById('rf-amt').value) || 0;
+  if (amt <= 0) { alert('환불 금액을 입력해 주세요.'); return; }
+  if (amt > (r.amt || 0)) { alert(`환불 금액이 원결제 금액(${(r.amt||0).toLocaleString()}원)을 초과합니다.`); return; }
+
+  const reason = document.getElementById('rf-reason-text').value.trim() || '사유 없음';
+  if (!confirm(`${r.name}님 ${amt.toLocaleString()}원을 환불 처리할까요?
+방법: ${refundMethod} / 사유: ${reason}`)) return;
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  // refunds 컬렉션에 저장
+  const refundRec = {
+    originalId: String(r.id),
+    date: today,
+    time: timeStr,
+    name: r.name,
+    originalDate: r.date,
+    originalAmt: r.amt || 0,
+    originalPay: r.pay || '',
+    originalTicket: r.ticket || r.cat || '',
+    refundAmt: amt,
+    refundMethod,
+    reason,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    await dbCompat.collection('refunds').add(refundRec);
+
+    // 원결제에 refunded 표시
+    await payColRef.doc(String(r.id)).update({ refunded: true, refundAmt: amt, refundDate: today });
+
+    // 로컬 payRecords 업데이트
+    const idx = payRecords.findIndex(x => String(x.id) === String(r.id));
+    if (idx !== -1) { payRecords[idx].refunded = true; payRecords[idx].refundAmt = amt; }
+
+    closeRefundModal();
+    if (window.updatePayStats) window.updatePayStats();
+    window.toast && window.toast(`${r.name}님 ${amt.toLocaleString()}원 환불 처리 완료 💸`);
+  } catch(e) {
+    console.error('환불 저장 오류:', e);
+    alert('환불 저장 중 오류가 발생했습니다.');
+  }
 };
 
 </script>
