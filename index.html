@@ -432,7 +432,7 @@ tr:hover td{background:#fafaf9}
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:12px;color:#aaa" id="last-sync"></span>
-    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v26.8.1</span>
+    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v26.8.2</span>
     <button onclick="openStudentSearch()" title="수강생 검색"
       style="padding:7px 14px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;color:#555;display:flex;align-items:center;gap:6px">
       <span style="font-size:17px">🔍</span> 수강생 검색
@@ -2471,7 +2471,7 @@ function buildPayTable(data){
         :payBadge(r.pay);
       const actionCell=isTicket
         ?`<button class="del-pay-btn" onclick="cancelTicketDeduct('${r._memberId}',${r._histId},'${r._memberName}',${r._memberRemaining})" style="color:#e24b4a">↩ 취소</button>`
-        :`<button class="del-pay-btn" onclick="openRefundModal('${r.id}')" style="color:#e24b4a;margin-right:2px">환불</button><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button>`;
+        :`<button class="del-pay-btn" onclick="openRefundModal('${r.id||r.firebaseId||''}')" style="color:#e24b4a;margin-right:2px">환불</button><button class="del-pay-btn" onclick="openEditPay('${r.id}')" style="color:#666;margin-right:2px">수정</button><button class="del-pay-btn" onclick="delPayRecord('${r.id}')">삭제</button>`;
       return`<tr style="${rowBg}">
         <td style="color:#888">${r.date}</td>
         <td style="color:#aaa;font-size:11px">${r.time||''}</td>
@@ -4768,8 +4768,8 @@ let refundTargetId = null;
 let refundMethod = '카드취소';
 
 window.openRefundModal = function(id) {
-  const r = (window.payRecords || []).find(x => String(x.id) === String(id));
-  if (!r) { alert('결제 내역을 찾을 수 없습니다.'); return; }
+  const r = (window.payRecords || []).find(x => String(x.id) === String(id) || String(x.firebaseId) === String(id));
+  if (!r) { alert('결제 내역을 찾을 수 없습니다. (id: '+id+')'); return; }
   if (r.refunded) { alert('이미 환불 처리된 내역입니다.'); return; }
 
   refundTargetId = id;
@@ -4866,7 +4866,8 @@ window.confirmRefund = async function() {
     await dbCompat.collection('refunds').add(refundRec);
 
     // 원결제에 refunded 표시
-    await payColRef.doc(String(r.id)).update({ refunded: true, refundAmt: amt, refundDate: today });
+    const docId = r.firebaseId || String(r.id);
+    await payColRef.doc(docId).update({ refunded: true, refundAmt: amt, refundDate: today });
 
     // 로컬 payRecords 업데이트
     const idx = payRecords.findIndex(x => String(x.id) === String(r.id));
