@@ -1205,8 +1205,8 @@ tr:hover td{background:#fafaf9}
         style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">부상</button>
       <button data-reason="개인사정" onclick="selectRefundReason('개인사정')"
         style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">개인사정</button>
-      <button data-reason="일정변경" onclick="selectRefundReason('일정변경')"
-        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">일정변경</button>
+      <button data-reason="수업변경" onclick="selectRefundReason('수업변경')"
+        style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">수업변경</button>
       <button data-reason="기타" onclick="selectRefundReason('기타')"
         style="padding:8px 0;border:1px solid #e0e0da;border-radius:8px;background:#f5f5f4;color:#555;font-size:12px;cursor:pointer;font-family:inherit">기타</button>
     </div>
@@ -1294,7 +1294,6 @@ onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));window.m
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 window.daysLeft=daysLeft;
-function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
 function initials(n){return n.slice(0,2);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 window.toast=toast;
@@ -2606,6 +2605,10 @@ function renderDaily(){
   const payRecs=d.filter(r=>r.name!=='물'&&!r.water&&r.pay!=='전문반'&&r.amt>0);
   // 총 매출 = 실제결제 + 물 (전문반·티켓 0원 제외)
   const tot=payRecs.reduce((s,r)=>s+r.amt,0)+waterRecs.reduce((s,r)=>s+r.amt,0);
+  // 오늘 환불
+  const todayRefunds=(window.refundRecords||[]).filter(r=>normDate(r.date)===date);
+  const refundAmt=todayRefunds.reduce((s,r)=>s+(r.refundAmt||0),0);
+  const netAmt=tot-refundAmt;
   const cd=d.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
   const tf=d.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
   const cs=d.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
@@ -2621,8 +2624,10 @@ function renderDaily(){
     <div class="mini-stat"><div class="ml">결제 건수</div><div class="mv">${payRecs.length}건</div></div>
     <div class="mini-stat"><div class="ml">🎫 티켓 차감</div><div class="mv" style="color:#204828">${deductCnt}회</div></div>
     ${proCnt?`<div class="mini-stat"><div class="ml">전문반 수강</div><div class="mv" style="color:#7b4fb5">${proCnt}명</div></div>`:''}
-    <div class="mini-stat"><div class="ml">물 💧</div><div class="mv" style="color:#2176ae">${waterCnt}개 · ${fmtW(waterAmt)}</div></div>`;
-  document.getElementById('daily-mini').style.gridTemplateColumns=`repeat(${proCnt?6:5},minmax(0,1fr))`;
+    <div class="mini-stat"><div class="ml">물 💧</div><div class="mv" style="color:#2176ae">${waterCnt}개 · ${fmtW(waterAmt)}</div></div>
+    ${refundAmt>0?`<div class="mini-stat"><div class="ml">💸 환불</div><div class="mv" style="color:#e24b4a">-${fmtW(refundAmt)}</div></div>`:''}`;
+  const miniCols=(proCnt?6:5)+(refundAmt>0?1:0);
+  document.getElementById('daily-mini').style.gridTemplateColumns=`repeat(${miniCols},minmax(0,1fr))`;
   // 티켓 차감 내역 → 가상 레코드로 변환
   const ticketRows=[];
   (window.members||[]).forEach(m=>{
@@ -3473,6 +3478,11 @@ function renderDailyClosing(recs, date){
   const card=recs.filter(r=>r.pay==='카드').reduce((s,r)=>s+r.amt,0);
   const tf=recs.filter(r=>r.pay==='이체').reduce((s,r)=>s+r.amt,0);
   const cash=recs.filter(r=>r.pay==='현금').reduce((s,r)=>s+r.amt,0);
+  // 오늘 환불
+  const dateStr=recs[0]?.date||'';
+  const dayRefunds=(window.refundRecords||[]).filter(r=>(r.date||'').slice(0,10)===dateStr.slice(0,10));
+  const dayRefundAmt=dayRefunds.reduce((s,r)=>s+(r.refundAmt||0),0);
+  const netTotal=total-dayRefundAmt;
 
   // 티켓 차감 건수 (payRecords 중 다회권 차감 or members history)
   const ticketRecs=payRecs.filter(r=>r.ticket==='다회권 차감'||r.pay==='다회권');
@@ -3627,6 +3637,17 @@ function renderDailyClosing(recs, date){
       <span class="closing-label" style="font-weight:700;color:#1a1a1a">총 매출</span>
       <span class="closing-val" style="font-weight:700;color:#204828">${fmtW(total)}</span>
     </div>
+    ${dayRefundAmt>0?`
+    <div class="closing-row" style="font-size:13px">
+      <span class="closing-label" style="color:#e24b4a">💸 환불
+        <span style="font-size:11px;color:#aaa;font-weight:400">(${dayRefunds.map(r=>r.name).join(', ')})</span>
+      </span>
+      <span class="closing-val" style="color:#e24b4a;font-weight:600">-${fmtW(dayRefundAmt)}</span>
+    </div>
+    <div class="closing-row" style="font-size:15px;background:#f0faf5;border-radius:8px;padding:8px 10px;margin-top:4px">
+      <span class="closing-label" style="font-weight:700;color:#1a1a1a">순매출</span>
+      <span class="closing-val" style="font-weight:700;color:#204828">${fmtW(netTotal)}</span>
+    </div>`:''}
     <div class="closing-method">
       <div class="cm-box"><div class="cm-label">카드</div><div class="cm-val">${fmtW(card)}</div></div>
       <div class="cm-box"><div class="cm-label">이체</div><div class="cm-val">${fmtW(tf)}</div></div>
@@ -3798,7 +3819,7 @@ waitDb(db=>{
   function monthEnd(ym){const[y,m]=ym.split('-');return new Date(y,m,0).toISOString().split('T')[0];}
   function isThisMonth(m){return (m.month||'')===thisMonth();}
   function getMonthAttend(m,ym){return (m.attendance||[]).filter(r=>(r.date||r||'').startsWith(ym));}
-  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`;}
+  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}
   function fmtMonth(ym){if(!ym)return'-';const[y,mo]=ym.split('-');return`${y}.${mo}`;}
   const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
@@ -4900,7 +4921,7 @@ window.renderRefundsTab = async function() {
     return;
   }
 
-  const REASON_COLOR = {'부상':'#4a90d9','개인사정':'#f5a623','일정변경':'#1d9e75','기타':'#888'};
+  const REASON_COLOR = {'부상':'#4a90d9','개인사정':'#f5a623','수업변경':'#1d9e75','기타':'#888'};
 
   wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="border-bottom:2px solid #f0f0ee">
