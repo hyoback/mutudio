@@ -3796,586 +3796,7 @@ function exportCSV(){
 }
 </script>
 
-<!-- ══ 전문반 관리 JS ══ -->
-<script type="module">
-import{getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// Firestore 준비 대기
-function waitDb(cb){
-  if(window._firestoreDb){cb(window._firestoreDb);return;}
-  const t=setInterval(()=>{if(window._firestoreDb){clearInterval(t);cb(window._firestoreDb);}},80);
-}
-
-waitDb(db=>{
-  const proColRef=collection(db,'proMembers');
-  let proMembers=[];
-  let proSearchQuery='';
-  let proArchiveOpen=false;
-
-  // ── 유틸 ──
-  function thisMonth(){return new Date().toISOString().slice(0,7);}  // "YYYY-MM"
-  function monthLabel(ym){const[y,m]=ym.split('-');return `${y}년 ${parseInt(m)}월`;}
-  function monthStart(ym){return ym+'-01';}
-  function monthEnd(ym){const[y,m]=ym.split('-');return new Date(y,m,0).toISOString().split('T')[0];}
-  function isThisMonth(m){return (m.month||'')===thisMonth();}
-  function getMonthAttend(m,ym){return (m.attendance||[]).filter(r=>(r.date||r||'').startsWith(ym));}
-  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`}
-  function fmtMonth(ym){if(!ym)return'-';const[y,mo]=ym.split('-');return`${y}.${mo}`;}
-  const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
-
-  // ── 실시간 동기화 ──
-  onSnapshot(query(proColRef,orderBy('createdAt')),snap=>{
-    proMembers=snap.docs.map(d=>{
-      const data={id:d.id,...d.data()};
-      // 구버전 데이터 호환: month 필드 없으면 startDate 또는 expiry에서 추출
-      if(!data.month){
-        const ref=data.startDate||data.expiry||'';
-        if(ref) data.month=ref.slice(0,7);
-      }
-      return data;
-    });
-    window.proMembers=proMembers;
-    renderProPage();
-  },err=>console.error('전문반 오류:',err));
-
-  // ── 메인 렌더 ──
-  function renderProPage(){
-    const cur=thisMonth();
-    const activeList=proMembers.filter(m=>m.month===cur);
-    const archivedList=proMembers.filter(m=>m.month!==cur);
-    const q=proSearchQuery;
-
-    // 통계
-    const statsEl=document.getElementById('pro-stats-grid');
-    if(statsEl){
-      const totalAtt=activeList.reduce((s,m)=>s+getMonthAttend(m,cur).length,0);
-      statsEl.innerHTML=`
-        <div class="stat-card"><div class="stat-num">${activeList.length}</div><div class="stat-label">이번 달 수강생</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:#1d9e75">${totalAtt}</div><div class="stat-label">이번 달 총 출석</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:#888">${archivedList.length}</div><div class="stat-label">지난 수강생</div></div>`;
-    }
-    const lbl=document.getElementById('pro-month-label');
-    if(lbl) lbl.textContent=`${monthLabel(cur)} 전문반 현황`;
-
-    // 이번 달
-    let filtered=activeList;
-    if(q) filtered=filtered.filter(m=>(m.name||'').includes(q));
-    renderProList(document.getElementById('pro-members-active'),filtered,cur,false);
-
-    // 아카이브
-    const archSec=document.getElementById('pro-archived-section');
-    if(archSec) archSec.style.display=archivedList.length?'block':'none';
-    const archLbl=document.getElementById('pro-archive-toggle-label');
-    if(archLbl) archLbl.textContent=`지난 수강생 (${archivedList.length}명)`;
-    if(proArchiveOpen){
-      let filtArch=archivedList;
-      if(q) filtArch=filtArch.filter(m=>(m.name||'').includes(q));
-      // 최신 달 순 정렬
-      filtArch.sort((a,b)=>(b.month||'').localeCompare(a.month||''));
-      renderProList(document.getElementById('pro-members-archived'),filtArch,'',true);
-    }
-  }
-  window.renderProMembers=renderProPage;
-
-  // ── 전문반 고정 수업 선생님 6명 × 2회 체크리스트 ──
-  const PRO_FIXED_CLASSES=[
-    {key:'wanna',    teacher:'WANNA T'},
-    {key:'trigger',  teacher:'TRIGGER T'},
-    {key:'mina',     teacher:'MINA MYOUNG T'},
-    {key:'vida',     teacher:'VIDA KIM T'},
-    {key:'realee',   teacher:'REALEE T'},
-    {key:'hyos',     teacher:'HYOS T'},
-  ];
-
-  function renderProList(el,list,curMonth,isArchive){
-    if(!el)return;
-    if(!list.length){el.innerHTML=`<div class="empty" style="grid-column:1/-1">${isArchive?'지난 수강생이 없습니다.':'이번 달 등록된 전문반 수강생이 없습니다.'}</div>`;return;}
-    const today=new Date().toISOString().split('T')[0];
-
-    el.innerHTML=list.map((m,idx)=>{
-      const ym=m.month||curMonth;
-      const attend=getMonthAttend(m,ym);
-      const fixedAttend=m.fixedAttend||{};
-      const usedCount=attend.length;
-      const pct=Math.min(100,Math.round(usedCount/20*100));
-      const barColor=usedCount>=20?'#e24b4a':usedCount>=15?'#ef9f27':'#1d9e75';
-      const av=idx%5;
-      const initials=(m.name||'').slice(0,2);
-      const isToday=attend.some(r=>(r.date||r)===today);
-      const cardCls=isArchive?'pro-archived':'pro-active';
-      const badgeCls=isArchive?'pro-badge-archived':'pro-badge-active';
-      const badgeText=isArchive?fmtMonth(ym)+'수강':'수강 중';
-
-      // ── 고정 수업 출석 체크리스트 (선생님 6명 × 2회) ──
-      let fixedHtml='';
-      if(!isArchive){
-        const fixedAttend=m.fixedAttend||{};
-        const rows=PRO_FIXED_CLASSES.map(fc=>{
-          const checks=fixedAttend[fc.key]||[false,false];
-          const d1=checks[0]?'on':'';
-          const d2=checks[1]?'on':'';
-          return `<div class="fixed-class-row">
-            <div class="fixed-class-label"><span class="fixed-class-name">${fc.teacher}</span></div>
-            <div class="fixed-class-dots">
-              <button class="fc-dot ${d1}" onclick="toggleFixedAttend('${m.id}','${fc.key}',0)">1</button>
-              <button class="fc-dot ${d2}" onclick="toggleFixedAttend('${m.id}','${fc.key}',1)">2</button>
-            </div>
-          </div>`;
-        }).join('');
-        fixedHtml=`<div class="fixed-classes-wrap">
-          <div class="fixed-classes-title">📌 고정 수업 출석</div>
-          ${rows}
-        </div>`;
-      }
-
-      // ── 수강일지 ──
-      const logItems=[...attend].sort((a,b)=>(b.date||b).localeCompare(a.date||a));
-      const logHtml=logItems.length
-        ?logItems.map(r=>{
-          const d=r.date||r;const teacher=r.teacher||'';const cat=r.cat||'';
-          const catLabel=cat?` <span style="font-size:10px;color:#aaa">${CAT_LABEL[cat]||cat}</span>`:'';
-          const timeLabel=r.time?`<span style="font-size:10px;color:#bbb;margin-left:4px">${r.time}</span>`:'';
-          const fromPayBadge=r.fromPay?`<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f5f0ff;color:#7b4fb5;font-weight:600;margin-left:3px">결제연동</span>`:'';
-          return `<div class="pro-log-item">
-            <span class="pro-log-date">${d.replace(/-/g,'.')}${timeLabel}</span>
-            <span class="pro-log-class">${teacher||'수업 정보 없음'}${catLabel}${fromPayBadge}</span>
-            <button class="pro-log-del" onclick="removeProAttend('${m.id}','${d}',${r.logId||0})" title="삭제">✕</button>
-          </div>`;
-        }).join('')
-        :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">수강 이력 없음</div>`;
-
-      // 아카이브: 다음달 연장등록 / 활성: 이번달 재결제 모두 표시
-      const renewBtn=isArchive
-        ?`<button class="pro-renew-btn" onclick="openProRenew('${m.id}')">🔄 다음 달 연장 등록</button>`
-        :`<button class="pro-renew-btn" style="background:#1a6b4a" onclick="openProRepay('${m.id}')">💳 이번 달 재결제</button>`;
-
-      return `<div class="pro-member-card ${cardCls}">
-        <div class="card-top" style="margin-bottom:10px">
-          <div class="avatar ${['av0','av1','av2','av3','av4'][av]}">${initials}</div>
-          <div class="member-info">
-            <div class="member-name">${m.name||'-'}
-              <span class="pro-badge ${badgeCls}" style="margin-left:6px">${badgeText}</span>
-            </div>
-            <div class="member-phone">${m.phone||'-'}</div>
-            ${m.memo?`<div style="font-size:11px;color:#aaa;margin-top:2px">${m.memo}</div>`:''}
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-            <button onclick="openProEdit('${m.id}')" class="edit-btn">✏️ 수정</button>
-            <button onclick="removeProMember('${m.id}')" class="del-btn">삭제</button>
-          </div>
-        </div>
-        <div style="background:#f8f8f5;border-radius:8px;padding:10px 12px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span style="font-size:11px;color:#888">${monthLabel(ym)} 수강 횟수</span>
-            <span style="font-size:20px;font-weight:700;letter-spacing:-1px;color:${barColor}">${usedCount}<span style="font-size:12px;font-weight:400;color:#aaa"> / 20회</span></span>
-          </div>
-          <div class="pro-usage-bar"><div class="pro-usage-fill" style="width:${pct}%;background:${barColor}"></div></div>
-          ${usedCount>=20?`<div style="font-size:11px;color:#e24b4a;margin-top:4px;font-weight:600">이번 달 수강 한도 도달 🚫</div>`:''}
-        </div>
-        ${fixedHtml}
-        ${!isArchive?`<div class="card-actions" style="margin-bottom:10px">
-          <button class="deduct-btn" onclick="markProAttendManual('${m.id}')" ${usedCount>=20?'disabled':''}
-            style="${isToday?'background:#e1f5ee;border-color:#a8d5c2;color:#0f6e56;font-weight:600;':''}"
-          >${isToday?'✅ 오늘 수강 기록됨':'+ 수강 기록 추가'}</button>
-        </div>`:''}
-        <div style="background:#f8f8f5;border-radius:8px;overflow:hidden">
-          <div style="padding:10px 12px 6px">
-            <div class="pro-section-label">수강 일지 (${usedCount}회)</div>
-            <div style="max-height:180px;overflow-y:auto">${logHtml}</div>
-          </div>
-        </div>
-        ${renewBtn}
-      </div>`;
-    }).join('');
-  }
-
-  // ── 수강 기록 추가 (시간표 기반 수업 버튼) ──
-  window.markProAttendManual=function(id){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const today=new Date().toISOString().split('T')[0];
-    const ym=m.month||thisMonth();
-    const existing=document.getElementById('pro-attend-popup');
-    if(existing)existing.remove();
-
-    // 오늘 요일 기준 시간표 클래스 (전문반 고정 수업 제외)
-    const dow=new Date().getDay();
-    const TT=window.TIMETABLE||{};
-    const todayClasses=(TT[dow]||[]).filter(c=>{
-      // 전문반 고정 수업은 제외
-      const isFixed=PRO_FIXED_CLASSES.some(fc=>fc.dow===dow&&(c.t||'').toUpperCase().includes(fc.teacher.split(' ')[0]));
-      return !isFixed;
-    });
-
-    // 수업 버튼 HTML
-    const CAT_COLOR_P={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
-    const CAT_LABEL_P={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
-    const classButtonsHtml=todayClasses.length
-      ?`<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">`
-        +todayClasses.map((c,i)=>`<button id="pro-class-btn-${i}" class="dc-btn" style="text-align:left;padding:10px 14px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;transition:.12s" onclick="selectProAttendClass(this,'${(c.t||'').replace(/'/g,"\\'")}','${c.cat||''}')">
-          <span style="font-size:13px;font-weight:600;color:#1a1a1a">${c.t||'강사 미지정'}</span>
-          <span style="display:flex;align-items:center;gap:6px">
-            ${c.time?`<span style="font-size:11px;color:#aaa">${c.time}</span>`:''}
-            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;background:${CAT_COLOR_P[c.cat]||'#888'}18;color:${CAT_COLOR_P[c.cat]||'#888'}">${CAT_LABEL_P[c.cat]||c.cat||''}</span>
-          </span>
-        </button>`).join('')
-        +`</div>`
-      :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">오늘 등록된 수업이 없습니다</div>`;
-
-    const popup=document.createElement('div');
-    popup.id='pro-attend-popup';
-    popup.className='modal-bg show';
-    popup.innerHTML=`<div class="modal" style="width:340px">
-      <div class="modal-title">수강 기록 추가 — ${m.name}</div>
-      <div class="field">
-        <label>수강 날짜</label>
-        <input type="date" id="pro-attend-date" value="${today}" min="${monthStart(ym)}" max="${monthEnd(ym)}" style="width:100%;padding:9px 12px;border:1px solid #e0e0da;border-radius:8px;font-size:14px;font-family:inherit;outline:none" onchange="updateProAttendDay(this.value,'${id}','${ym}')" />
-      </div>
-      <div class="field">
-        <label>오늘 수업 <span style="font-size:11px;color:#aaa;font-weight:400">— 여러 개 선택 가능</span></label>
-        <div id="pro-class-btns-wrap">${classButtonsHtml}</div>
-      </div>
-      <div id="pro-attend-selected" style="font-size:12px;color:#0f6e56;font-weight:600;min-height:18px;margin-bottom:4px"></div>
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="document.getElementById('pro-attend-popup').remove()">취소</button>
-        <button class="btn-save" onclick="confirmProAttend('${id}')">추가</button>
-      </div>
-    </div>`;
-    document.body.appendChild(popup);
-    popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
-    window._proAttendSelected=[];
-    setTimeout(()=>document.getElementById('pro-attend-date')?.focus(),50);
-  };
-
-  // 날짜 변경 시 시간표 갱신
-  window.updateProAttendDay=function(dateVal,id,ym){
-    const dow=new Date(dateVal+'T00:00:00').getDay();
-    const TT=window.TIMETABLE||{};
-    const dayClasses=(TT[dow]||[]).filter(c=>{
-      return !PRO_FIXED_CLASSES.some(fc=>fc.dow===dow&&(c.t||'').toUpperCase().includes(fc.teacher.split(' ')[0]));
-    });
-    const CAT_COLOR_P={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
-    const CAT_LABEL_P={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
-    const wrap=document.getElementById('pro-class-btns-wrap');
-    if(!wrap)return;
-    wrap.innerHTML=dayClasses.length
-      ?`<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">`
-        +dayClasses.map((c,i)=>`<button class="dc-btn" style="text-align:left;padding:10px 14px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;transition:.12s" onclick="selectProAttendClass(this,'${(c.t||'').replace(/'/g,"\\'")}','${c.cat||''}')">
-          <span style="font-size:13px;font-weight:600;color:#1a1a1a">${c.t||'강사 미지정'}</span>
-          <span style="display:flex;align-items:center;gap:6px">
-            ${c.time?`<span style="font-size:11px;color:#aaa">${c.time}</span>`:''}
-            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;background:${CAT_COLOR_P[c.cat]||'#888'}18;color:${CAT_COLOR_P[c.cat]||'#888'}">${CAT_LABEL_P[c.cat]||c.cat||''}</span>
-          </span>
-        </button>`).join('')+`</div>`
-      :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">이 날 등록된 수업이 없습니다</div>`;
-    window._proAttendSelected=[];
-    const sel=document.getElementById('pro-attend-selected');
-    if(sel)sel.textContent='';
-  };
-
-  // 수업 버튼 클릭 시 선택/해제 토글
-  window.selectProAttendClass=function(btn,teacher,cat){
-    if(!window._proAttendSelected)window._proAttendSelected=[];
-    const key=teacher+'||'+cat;
-    const idx=window._proAttendSelected.findIndex(x=>x.key===key);
-    if(idx>=0){
-      window._proAttendSelected.splice(idx,1);
-      btn.style.background='#fff';btn.style.borderColor='#e0e0da';
-    } else {
-      window._proAttendSelected.push({key,teacher,cat});
-      btn.style.background='#eaf4e5';btn.style.borderColor='#1d9e75';
-    }
-    const sel=document.getElementById('pro-attend-selected');
-    if(sel){
-      const cnt=window._proAttendSelected.length;
-      sel.textContent=cnt?`✅ ${cnt}개 수업 선택됨`:'';
-    }
-  };
-
-  window.confirmProAttend=async function(id){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const dateEl=document.getElementById('pro-attend-date');
-    if(!dateEl)return;
-    const date=dateEl.value;
-    if(!date){window.toast&&window.toast('날짜를 선택해 주세요.');return;}
-    const ym=m.month||thisMonth();
-    if(!date.startsWith(ym)){window.toast&&window.toast('수강 월 범위를 벗어난 날짜입니다.');return;}
-    const attend=m.attendance||[];
-    const monthAtt=attend.filter(r=>(r.date||r).startsWith(ym));
-    const selected=window._proAttendSelected||[];
-    // 수업 선택 안 했으면 경고
-    if(!selected.length){window.toast&&window.toast('수업을 하나 이상 선택해 주세요.');return;}
-    if(monthAtt.length+selected.length>20){window.toast&&window.toast('수강 한도(20회)를 초과합니다.');return;}
-    const now=new Date();
-    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    for(const s of selected){
-      const logId=Date.now()+Math.random();
-      await updateDoc(doc(db,'proMembers',id),{attendance:arrayUnion({date,time:timeStr,teacher:s.teacher||'',cat:s.cat||'',logId})});
-    }
-    document.getElementById('pro-attend-popup')?.remove();
-    window.toast&&window.toast(`${m.name}님 수강 기록 ${selected.length}개 추가 완료`);
-  };
-
-  // ── 고정 수업 출석 토글 (선생님 key + 인덱스 0/1) ──
-  window.toggleFixedAttend=async function(id,classKey,idx){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const fixedAttend=JSON.parse(JSON.stringify(m.fixedAttend||{}));
-    const cur=fixedAttend[classKey]||[false,false];
-    cur[idx]=!cur[idx];
-    fixedAttend[classKey]=cur;
-    await updateDoc(doc(db,'proMembers',id),{fixedAttend});
-  };
-
-  // ── 다음 달 연장 등록 ──
-  // ── 전문반 결제 모달 (연장/재결제 공통) ──
-  function openProPayModal({id, targetYm, isRepay}){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const label=monthLabel(targetYm);
-    const existing=document.getElementById('pro-pay-modal');
-    if(existing)existing.remove();
-
-    const overlay=document.createElement('div');
-    overlay.id='pro-pay-modal';
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
-    overlay.innerHTML=`
-      <div style="background:#fff;border-radius:14px;padding:28px 24px;width:320px;max-width:92vw">
-        <div style="font-size:17px;font-weight:700;margin-bottom:4px">${m.name}님 전문반 ${isRepay?'재결제':'연장 등록'}</div>
-        <div style="font-size:13px;color:#888;margin-bottom:20px">${label}</div>
-
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 금액</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-          ${[700000,600000,500000].map(v=>`
-            <button onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';document.getElementById('pro-pay-amt').value=${v}"
-              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:#f0f0f0;font-size:14px;font-weight:600;cursor:pointer">
-              ${(v/10000).toFixed(0)}만
-            </button>`).join('')}
-          <input id="pro-pay-amt" type="number" placeholder="직접 입력" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:14px;min-width:90px">
-        </div>
-
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 방법</div>
-        <div style="display:flex;gap:8px;margin-bottom:24px" id="pro-pay-method-btns">
-          ${['카드','이체','현금'].map((p,i)=>`
-            <button onclick="document.getElementById('pro-pay-method-btns').querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';this.dataset.selected='1'"
-              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:${i===0?'#204828':'#f0f0f0'};color:${i===0?'#fff':'#333'};font-size:14px;cursor:pointer" data-pay="${p}" ${i===0?'data-selected=1':''}>
-              ${p}
-            </button>`).join('')}
-        </div>
-
-        <div style="display:flex;gap:10px">
-          <button onclick="document.getElementById('pro-pay-modal').remove()"
-            style="flex:1;padding:11px;border:none;border-radius:9px;background:#f0f0f0;font-size:14px;cursor:pointer">취소</button>
-          <button onclick="confirmProPay('${id}','${targetYm}',${isRepay?'true':'false'})"
-            style="flex:1;padding:11px;border:none;border-radius:9px;background:#204828;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
-            ${isRepay?'재결제 완료':'연장 등록 완료'}
-          </button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    // 기본 70만원 선택
-    overlay.querySelector('button').click();
-  }
-
-  window.confirmProPay=async function(id,targetYm,isRepay){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const amtEl=document.getElementById('pro-pay-amt');
-    const amt=parseInt(amtEl?.value||0);
-    if(!amt||amt<=0){alert('금액을 입력해 주세요.');return;}
-    const payBtn=document.getElementById('pro-pay-method-btns')?.querySelector('[data-selected]');
-    const pay=payBtn?.dataset?.pay||'카드';
-    const label=monthLabel(targetYm);
-
-    // 중복 확인 (연장의 경우)
-    if(!isRepay){
-      const dup=proMembers.find(x=>x.name===m.name&&x.month===targetYm);
-      if(dup){window.toast&&window.toast(`이미 ${label}에 등록되어 있습니다.`);document.getElementById('pro-pay-modal')?.remove();return;}
-    }
-
-    const today=new Date().toISOString().split('T')[0];
-    const now=new Date();
-    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-
-    // payRecord 저장
-    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher:'',cat:'전문반',ticket:'전문반',amt,pay,note:isRepay?`${label} 재결제`:`${label} 연장등록`};
-    await savePayToFirebase(rec);
-    savePay();
-
-    // proMembers 문서 생성 (연장) or 유지 (재결제)
-    if(!isRepay){
-      await addDoc(collection(db,'proMembers'),{
-        name:m.name,phone:m.phone||'',month:targetYm,memo:m.memo||'',
-        attendance:[],fixedAttend:{},createdAt:serverTimestamp()
-      });
-    }
-
-    document.getElementById('pro-pay-modal')?.remove();
-    if(window.updatePayStats) window.updatePayStats();
-    window.toast&&window.toast(`${m.name}님 ${label} ${isRepay?'재결제':'연장 등록'} 완료! 🎉 (${(amt/10000).toFixed(0)}만원 / ${pay})`);
-  };
-
-  window.openProRenew=function(id){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const curYm=m.month||thisMonth();
-    const[y,mo]=curYm.split('-').map(Number);
-    const nextYm=new Date(y,mo,1).toISOString().slice(0,7);
-    openProPayModal({id,targetYm:nextYm,isRepay:false});
-  };
-
-  window.openProRepay=function(id){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    const curYm=m.month||thisMonth();
-    openProPayModal({id,targetYm:curYm,isRepay:true});
-  };
-
-  window.removeProAttend=async function(id,date,logId){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    if(!confirm(`${date} 수강 기록을 삭제할까요?`))return;
-    const attend=m.attendance||[];
-    // logId가 있으면 정확히 매칭, 없으면 날짜로
-    const entry=attend.find(r=>{
-      if(logId&&r.logId===logId)return true;
-      return (r.date||r)===date&&!r.logId;
-    })||attend.find(r=>(r.date||r)===date);
-    if(entry) await updateDoc(doc(db,'proMembers',id),{attendance:arrayRemove(entry)});
-    window.toast&&window.toast('수강 기록 삭제됨');
-  };
-
-  // ── 일반결제 탭 전문반 연동 ──
-  window.proPayAndDeduct=async function(name,date,teacher,cat,amt,pay){
-    const ym=date.slice(0,7);
-    // 이번 달 전문반 등록 여부 확인
-    let matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
-    // 완전 일치 없으면 부분 일치
-    if(!matched.length){
-      const partial=proMembers.filter(m=>m.month===ym&&(m.name||'').includes(name));
-      if(partial.length===1) matched=partial;
-      else if(partial.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
-    }
-    // 이번 달 미등록 → 전월 데이터로 신규 등록 (재결제)
-    if(!matched.length){
-      // 가장 최근 전문반 기록에서 phone/memo 가져오기
-      const prev=proMembers.filter(m=>(m.name||'')===name).sort((a,b)=>(b.month||'').localeCompare(a.month||''));
-      const phone=prev[0]?.phone||'';
-      const memo=prev[0]?.memo||'';
-      // 신규 proMembers 문서 생성
-      await addDoc(collection(db,'proMembers'),{
-        name,phone,month:ym,memo,
-        attendance:[],fixedAttend:{},
-        createdAt:serverTimestamp()
-      });
-      // 새로 추가된 멤버로 재조회
-      await new Promise(r=>setTimeout(r,600));
-      matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
-      if(!matched.length){
-        // Firestore 반영 전이면 가짜 객체로 진행 (수강 기록은 payRecord에만)
-        window.toast&&window.toast(`${name}님 ${ym.replace('-','년 ')}월 전문반 신규 등록됨`);
-        return {ok:true,isNew:true};
-      }
-    }
-    if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
-    const result=await doProDeduct(matched[0],date,teacher,cat);
-    return {ok:result,isNew:false};
-  };
-
-  // 기존 호환용
-  window.proDeductForPay=async function(name,date,teacher,cat){
-    const r=await window.proPayAndDeduct(name,date,teacher,cat,0,'전문반');
-    return r?.ok||false;
-  };
-
-  async function doProDeduct(m,date,teacher,cat){
-    const ym=date.slice(0,7);
-    const monthAtt=(m.attendance||[]).filter(r=>(r.date||r).startsWith(ym));
-    if(monthAtt.length>=20){
-      alert(`${m.name}님은 이번 달 수강 한도(20회)에 도달했습니다.`);return false;
-    }
-    const now=new Date();
-    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    const logId=Date.now();
-    const entry={date,time:timeStr,teacher:teacher||'',cat:cat||'',logId,fromPay:true};
-    await updateDoc(doc(db,'proMembers',m.id),{attendance:arrayUnion(entry)});
-    return true;
-  }
-
-  // ── 등록/수정 ──
-  window.openProModal=function(){
-    document.getElementById('pro-edit-id').value='';
-    document.getElementById('pro-modal-title').textContent='전문반 등록';
-    document.getElementById('pro-inp-name').value='';
-    document.getElementById('pro-inp-phone').value='010-';
-    document.getElementById('pro-inp-month').value=thisMonth();
-    document.getElementById('pro-inp-memo').value='';
-    document.getElementById('pro-modal').classList.add('show');
-    setTimeout(()=>document.getElementById('pro-inp-name').focus(),50);
-  };
-
-  window.openProEdit=function(id){
-    const m=proMembers.find(x=>x.id===id);if(!m)return;
-    document.getElementById('pro-edit-id').value=id;
-    document.getElementById('pro-modal-title').textContent='전문반 수정';
-    document.getElementById('pro-inp-name').value=m.name||'';
-    document.getElementById('pro-inp-phone').value=m.phone||'';
-    document.getElementById('pro-inp-month').value=m.month||thisMonth();
-    document.getElementById('pro-inp-memo').value=m.memo||'';
-    document.getElementById('pro-modal').classList.add('show');
-  };
-
-  window.closeProModal=function(){document.getElementById('pro-modal').classList.remove('show');};
-
-  window.saveProMember=async function(){
-    const id=document.getElementById('pro-edit-id').value;
-    const name=document.getElementById('pro-inp-name').value.trim();
-    const phone=document.getElementById('pro-inp-phone').value.trim();
-    const month=document.getElementById('pro-inp-month').value;
-    const memo=document.getElementById('pro-inp-memo').value.trim();
-    if(!name||!phone||!month){window.toast&&window.toast('이름, 연락처, 수강 월은 필수입니다.');return;}
-    window.setSyncStatus&&window.setSyncStatus('saving');
-    if(id){
-      await updateDoc(doc(db,'proMembers',id),{name,phone,month,memo});
-      window.toast&&window.toast(`${name}님 정보 수정 완료`);
-    } else {
-      // 중복 확인
-      const dup=proMembers.find(m=>m.name===name&&m.month===month);
-      if(dup&&!confirm(`${name}님은 이미 ${monthLabel(month)}에 등록되어 있습니다. 그래도 추가할까요?`))return;
-      await addDoc(proColRef,{name,phone,month,memo,attendance:[],createdAt:serverTimestamp()});
-      window.toast&&window.toast(`${name}님 ${monthLabel(month)} 전문반 등록 완료! 🎉`);
-    }
-    window.closeProModal();
-  };
-
-  window.removeProMember=async function(id){
-    const m=proMembers.find(x=>x.id===id);
-    if(!confirm(`${m?.name}님(${monthLabel(m?.month||'')})을 삭제할까요?\n수강 이력도 모두 삭제됩니다.`))return;
-    await deleteDoc(doc(db,'proMembers',id));
-    window.toast&&window.toast('삭제되었습니다.');
-  };
-
-  // ── 아카이브 토글 ──
-  window.toggleProArchive=function(){
-    proArchiveOpen=!proArchiveOpen;
-    const arrow=document.getElementById('pro-archive-arrow');
-    const body=document.getElementById('pro-members-archived');
-    if(arrow) arrow.classList.toggle('open',proArchiveOpen);
-    if(body){
-      body.style.display=proArchiveOpen?'grid':'none';
-      if(proArchiveOpen) renderProPage();
-    }
-  };
-
-  // ── 검색 ──
-  window.onProSearch=function(val){
-    proSearchQuery=val.trim();
-    document.getElementById('pro-search-clear').style.display=val?'block':'none';
-    renderProPage();
-  };
-  window.clearProSearch=function(){
-    document.getElementById('pro-search').value='';
-    proSearchQuery='';
-    document.getElementById('pro-search-clear').style.display='none';
-    renderProPage();
-  };
-
-  document.getElementById('pro-modal').addEventListener('click',function(e){if(e.target===this)window.closeProModal();});
-});
-
+<script>
 // ══════════════════════════════════════════
 // 이체 내역 탭 로직
 // ══════════════════════════════════════════
@@ -4972,6 +4393,589 @@ window.exportRefundCSV = function() {
   a.click();
   window.toast && window.toast('환불 내역 CSV 다운로드 완료!');
 };
+
+
+</script>
+
+<!-- ══ 전문반 관리 JS ══ -->
+<script type="module">
+import{getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Firestore 준비 대기
+function waitDb(cb){
+  if(window._firestoreDb){cb(window._firestoreDb);return;}
+  const t=setInterval(()=>{if(window._firestoreDb){clearInterval(t);cb(window._firestoreDb);}},80);
+}
+
+waitDb(db=>{
+  const proColRef=collection(db,'proMembers');
+  let proMembers=[];
+  let proSearchQuery='';
+  let proArchiveOpen=false;
+
+  // ── 유틸 ──
+  function thisMonth(){return new Date().toISOString().slice(0,7);}  // "YYYY-MM"
+  function monthLabel(ym){const[y,m]=ym.split('-');return `${y}년 ${parseInt(m)}월`;}
+  function monthStart(ym){return ym+'-01';}
+  function monthEnd(ym){const[y,m]=ym.split('-');return new Date(y,m,0).toISOString().split('T')[0];}
+  function isThisMonth(m){return (m.month||'')===thisMonth();}
+  function getMonthAttend(m,ym){return (m.attendance||[]).filter(r=>(r.date||r||'').startsWith(ym));}
+  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`}
+  function fmtMonth(ym){if(!ym)return'-';const[y,mo]=ym.split('-');return`${y}.${mo}`;}
+  const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
+
+  // ── 실시간 동기화 ──
+  onSnapshot(query(proColRef,orderBy('createdAt')),snap=>{
+    proMembers=snap.docs.map(d=>{
+      const data={id:d.id,...d.data()};
+      // 구버전 데이터 호환: month 필드 없으면 startDate 또는 expiry에서 추출
+      if(!data.month){
+        const ref=data.startDate||data.expiry||'';
+        if(ref) data.month=ref.slice(0,7);
+      }
+      return data;
+    });
+    window.proMembers=proMembers;
+    renderProPage();
+  },err=>console.error('전문반 오류:',err));
+
+  // ── 메인 렌더 ──
+  function renderProPage(){
+    const cur=thisMonth();
+    const activeList=proMembers.filter(m=>m.month===cur);
+    const archivedList=proMembers.filter(m=>m.month!==cur);
+    const q=proSearchQuery;
+
+    // 통계
+    const statsEl=document.getElementById('pro-stats-grid');
+    if(statsEl){
+      const totalAtt=activeList.reduce((s,m)=>s+getMonthAttend(m,cur).length,0);
+      statsEl.innerHTML=`
+        <div class="stat-card"><div class="stat-num">${activeList.length}</div><div class="stat-label">이번 달 수강생</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:#1d9e75">${totalAtt}</div><div class="stat-label">이번 달 총 출석</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:#888">${archivedList.length}</div><div class="stat-label">지난 수강생</div></div>`;
+    }
+    const lbl=document.getElementById('pro-month-label');
+    if(lbl) lbl.textContent=`${monthLabel(cur)} 전문반 현황`;
+
+    // 이번 달
+    let filtered=activeList;
+    if(q) filtered=filtered.filter(m=>(m.name||'').includes(q));
+    renderProList(document.getElementById('pro-members-active'),filtered,cur,false);
+
+    // 아카이브
+    const archSec=document.getElementById('pro-archived-section');
+    if(archSec) archSec.style.display=archivedList.length?'block':'none';
+    const archLbl=document.getElementById('pro-archive-toggle-label');
+    if(archLbl) archLbl.textContent=`지난 수강생 (${archivedList.length}명)`;
+    if(proArchiveOpen){
+      let filtArch=archivedList;
+      if(q) filtArch=filtArch.filter(m=>(m.name||'').includes(q));
+      // 최신 달 순 정렬
+      filtArch.sort((a,b)=>(b.month||'').localeCompare(a.month||''));
+      renderProList(document.getElementById('pro-members-archived'),filtArch,'',true);
+    }
+  }
+  window.renderProMembers=renderProPage;
+
+  // ── 전문반 고정 수업 선생님 6명 × 2회 체크리스트 ──
+  const PRO_FIXED_CLASSES=[
+    {key:'wanna',    teacher:'WANNA T'},
+    {key:'trigger',  teacher:'TRIGGER T'},
+    {key:'mina',     teacher:'MINA MYOUNG T'},
+    {key:'vida',     teacher:'VIDA KIM T'},
+    {key:'realee',   teacher:'REALEE T'},
+    {key:'hyos',     teacher:'HYOS T'},
+  ];
+
+  function renderProList(el,list,curMonth,isArchive){
+    if(!el)return;
+    if(!list.length){el.innerHTML=`<div class="empty" style="grid-column:1/-1">${isArchive?'지난 수강생이 없습니다.':'이번 달 등록된 전문반 수강생이 없습니다.'}</div>`;return;}
+    const today=new Date().toISOString().split('T')[0];
+
+    el.innerHTML=list.map((m,idx)=>{
+      const ym=m.month||curMonth;
+      const attend=getMonthAttend(m,ym);
+      const fixedAttend=m.fixedAttend||{};
+      const usedCount=attend.length;
+      const pct=Math.min(100,Math.round(usedCount/20*100));
+      const barColor=usedCount>=20?'#e24b4a':usedCount>=15?'#ef9f27':'#1d9e75';
+      const av=idx%5;
+      const initials=(m.name||'').slice(0,2);
+      const isToday=attend.some(r=>(r.date||r)===today);
+      const cardCls=isArchive?'pro-archived':'pro-active';
+      const badgeCls=isArchive?'pro-badge-archived':'pro-badge-active';
+      const badgeText=isArchive?fmtMonth(ym)+'수강':'수강 중';
+
+      // ── 고정 수업 출석 체크리스트 (선생님 6명 × 2회) ──
+      let fixedHtml='';
+      if(!isArchive){
+        const fixedAttend=m.fixedAttend||{};
+        const rows=PRO_FIXED_CLASSES.map(fc=>{
+          const checks=fixedAttend[fc.key]||[false,false];
+          const d1=checks[0]?'on':'';
+          const d2=checks[1]?'on':'';
+          return `<div class="fixed-class-row">
+            <div class="fixed-class-label"><span class="fixed-class-name">${fc.teacher}</span></div>
+            <div class="fixed-class-dots">
+              <button class="fc-dot ${d1}" onclick="toggleFixedAttend('${m.id}','${fc.key}',0)">1</button>
+              <button class="fc-dot ${d2}" onclick="toggleFixedAttend('${m.id}','${fc.key}',1)">2</button>
+            </div>
+          </div>`;
+        }).join('');
+        fixedHtml=`<div class="fixed-classes-wrap">
+          <div class="fixed-classes-title">📌 고정 수업 출석</div>
+          ${rows}
+        </div>`;
+      }
+
+      // ── 수강일지 ──
+      const logItems=[...attend].sort((a,b)=>(b.date||b).localeCompare(a.date||a));
+      const logHtml=logItems.length
+        ?logItems.map(r=>{
+          const d=r.date||r;const teacher=r.teacher||'';const cat=r.cat||'';
+          const catLabel=cat?` <span style="font-size:10px;color:#aaa">${CAT_LABEL[cat]||cat}</span>`:'';
+          const timeLabel=r.time?`<span style="font-size:10px;color:#bbb;margin-left:4px">${r.time}</span>`:'';
+          const fromPayBadge=r.fromPay?`<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#f5f0ff;color:#7b4fb5;font-weight:600;margin-left:3px">결제연동</span>`:'';
+          return `<div class="pro-log-item">
+            <span class="pro-log-date">${d.replace(/-/g,'.')}${timeLabel}</span>
+            <span class="pro-log-class">${teacher||'수업 정보 없음'}${catLabel}${fromPayBadge}</span>
+            <button class="pro-log-del" onclick="removeProAttend('${m.id}','${d}',${r.logId||0})" title="삭제">✕</button>
+          </div>`;
+        }).join('')
+        :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">수강 이력 없음</div>`;
+
+      // 아카이브: 다음달 연장등록 / 활성: 이번달 재결제 모두 표시
+      const renewBtn=isArchive
+        ?`<button class="pro-renew-btn" onclick="openProRenew('${m.id}')">🔄 다음 달 연장 등록</button>`
+        :`<button class="pro-renew-btn" style="background:#1a6b4a" onclick="openProRepay('${m.id}')">💳 이번 달 재결제</button>`;
+
+      return `<div class="pro-member-card ${cardCls}">
+        <div class="card-top" style="margin-bottom:10px">
+          <div class="avatar ${['av0','av1','av2','av3','av4'][av]}">${initials}</div>
+          <div class="member-info">
+            <div class="member-name">${m.name||'-'}
+              <span class="pro-badge ${badgeCls}" style="margin-left:6px">${badgeText}</span>
+            </div>
+            <div class="member-phone">${m.phone||'-'}</div>
+            ${m.memo?`<div style="font-size:11px;color:#aaa;margin-top:2px">${m.memo}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+            <button onclick="openProEdit('${m.id}')" class="edit-btn">✏️ 수정</button>
+            <button onclick="removeProMember('${m.id}')" class="del-btn">삭제</button>
+          </div>
+        </div>
+        <div style="background:#f8f8f5;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;color:#888">${monthLabel(ym)} 수강 횟수</span>
+            <span style="font-size:20px;font-weight:700;letter-spacing:-1px;color:${barColor}">${usedCount}<span style="font-size:12px;font-weight:400;color:#aaa"> / 20회</span></span>
+          </div>
+          <div class="pro-usage-bar"><div class="pro-usage-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          ${usedCount>=20?`<div style="font-size:11px;color:#e24b4a;margin-top:4px;font-weight:600">이번 달 수강 한도 도달 🚫</div>`:''}
+        </div>
+        ${fixedHtml}
+        ${!isArchive?`<div class="card-actions" style="margin-bottom:10px">
+          <button class="deduct-btn" onclick="markProAttendManual('${m.id}')" ${usedCount>=20?'disabled':''}
+            style="${isToday?'background:#e1f5ee;border-color:#a8d5c2;color:#0f6e56;font-weight:600;':''}"
+          >${isToday?'✅ 오늘 수강 기록됨':'+ 수강 기록 추가'}</button>
+        </div>`:''}
+        <div style="background:#f8f8f5;border-radius:8px;overflow:hidden">
+          <div style="padding:10px 12px 6px">
+            <div class="pro-section-label">수강 일지 (${usedCount}회)</div>
+            <div style="max-height:180px;overflow-y:auto">${logHtml}</div>
+          </div>
+        </div>
+        ${renewBtn}
+      </div>`;
+    }).join('');
+  }
+
+  // ── 수강 기록 추가 (시간표 기반 수업 버튼) ──
+  window.markProAttendManual=function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const today=new Date().toISOString().split('T')[0];
+    const ym=m.month||thisMonth();
+    const existing=document.getElementById('pro-attend-popup');
+    if(existing)existing.remove();
+
+    // 오늘 요일 기준 시간표 클래스 (전문반 고정 수업 제외)
+    const dow=new Date().getDay();
+    const TT=window.TIMETABLE||{};
+    const todayClasses=(TT[dow]||[]).filter(c=>{
+      // 전문반 고정 수업은 제외
+      const isFixed=PRO_FIXED_CLASSES.some(fc=>fc.dow===dow&&(c.t||'').toUpperCase().includes(fc.teacher.split(' ')[0]));
+      return !isFixed;
+    });
+
+    // 수업 버튼 HTML
+    const CAT_COLOR_P={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
+    const CAT_LABEL_P={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
+    const classButtonsHtml=todayClasses.length
+      ?`<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">`
+        +todayClasses.map((c,i)=>`<button id="pro-class-btn-${i}" class="dc-btn" style="text-align:left;padding:10px 14px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;transition:.12s" onclick="selectProAttendClass(this,'${(c.t||'').replace(/'/g,"\\'")}','${c.cat||''}')">
+          <span style="font-size:13px;font-weight:600;color:#1a1a1a">${c.t||'강사 미지정'}</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            ${c.time?`<span style="font-size:11px;color:#aaa">${c.time}</span>`:''}
+            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;background:${CAT_COLOR_P[c.cat]||'#888'}18;color:${CAT_COLOR_P[c.cat]||'#888'}">${CAT_LABEL_P[c.cat]||c.cat||''}</span>
+          </span>
+        </button>`).join('')
+        +`</div>`
+      :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">오늘 등록된 수업이 없습니다</div>`;
+
+    const popup=document.createElement('div');
+    popup.id='pro-attend-popup';
+    popup.className='modal-bg show';
+    popup.innerHTML=`<div class="modal" style="width:340px">
+      <div class="modal-title">수강 기록 추가 — ${m.name}</div>
+      <div class="field">
+        <label>수강 날짜</label>
+        <input type="date" id="pro-attend-date" value="${today}" min="${monthStart(ym)}" max="${monthEnd(ym)}" style="width:100%;padding:9px 12px;border:1px solid #e0e0da;border-radius:8px;font-size:14px;font-family:inherit;outline:none" onchange="updateProAttendDay(this.value,'${id}','${ym}')" />
+      </div>
+      <div class="field">
+        <label>오늘 수업 <span style="font-size:11px;color:#aaa;font-weight:400">— 여러 개 선택 가능</span></label>
+        <div id="pro-class-btns-wrap">${classButtonsHtml}</div>
+      </div>
+      <div id="pro-attend-selected" style="font-size:12px;color:#0f6e56;font-weight:600;min-height:18px;margin-bottom:4px"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="document.getElementById('pro-attend-popup').remove()">취소</button>
+        <button class="btn-save" onclick="confirmProAttend('${id}')">추가</button>
+      </div>
+    </div>`;
+    document.body.appendChild(popup);
+    popup.addEventListener('click',e=>{if(e.target===popup)popup.remove();});
+    window._proAttendSelected=[];
+    setTimeout(()=>document.getElementById('pro-attend-date')?.focus(),50);
+  };
+
+  // 날짜 변경 시 시간표 갱신
+  window.updateProAttendDay=function(dateVal,id,ym){
+    const dow=new Date(dateVal+'T00:00:00').getDay();
+    const TT=window.TIMETABLE||{};
+    const dayClasses=(TT[dow]||[]).filter(c=>{
+      return !PRO_FIXED_CLASSES.some(fc=>fc.dow===dow&&(c.t||'').toUpperCase().includes(fc.teacher.split(' ')[0]));
+    });
+    const CAT_COLOR_P={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
+    const CAT_LABEL_P={정규:'REGULAR',팝업:'POP-UP',비기너:'BEGINNER',베이직:'BASIC','K-POP':'K-POP',워크샵:'WORKSHOP'};
+    const wrap=document.getElementById('pro-class-btns-wrap');
+    if(!wrap)return;
+    wrap.innerHTML=dayClasses.length
+      ?`<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">`
+        +dayClasses.map((c,i)=>`<button class="dc-btn" style="text-align:left;padding:10px 14px;border-radius:8px;border:1.5px solid #e0e0da;background:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;transition:.12s" onclick="selectProAttendClass(this,'${(c.t||'').replace(/'/g,"\\'")}','${c.cat||''}')">
+          <span style="font-size:13px;font-weight:600;color:#1a1a1a">${c.t||'강사 미지정'}</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            ${c.time?`<span style="font-size:11px;color:#aaa">${c.time}</span>`:''}
+            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;background:${CAT_COLOR_P[c.cat]||'#888'}18;color:${CAT_COLOR_P[c.cat]||'#888'}">${CAT_LABEL_P[c.cat]||c.cat||''}</span>
+          </span>
+        </button>`).join('')+`</div>`
+      :`<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">이 날 등록된 수업이 없습니다</div>`;
+    window._proAttendSelected=[];
+    const sel=document.getElementById('pro-attend-selected');
+    if(sel)sel.textContent='';
+  };
+
+  // 수업 버튼 클릭 시 선택/해제 토글
+  window.selectProAttendClass=function(btn,teacher,cat){
+    if(!window._proAttendSelected)window._proAttendSelected=[];
+    const key=teacher+'||'+cat;
+    const idx=window._proAttendSelected.findIndex(x=>x.key===key);
+    if(idx>=0){
+      window._proAttendSelected.splice(idx,1);
+      btn.style.background='#fff';btn.style.borderColor='#e0e0da';
+    } else {
+      window._proAttendSelected.push({key,teacher,cat});
+      btn.style.background='#eaf4e5';btn.style.borderColor='#1d9e75';
+    }
+    const sel=document.getElementById('pro-attend-selected');
+    if(sel){
+      const cnt=window._proAttendSelected.length;
+      sel.textContent=cnt?`✅ ${cnt}개 수업 선택됨`:'';
+    }
+  };
+
+  window.confirmProAttend=async function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const dateEl=document.getElementById('pro-attend-date');
+    if(!dateEl)return;
+    const date=dateEl.value;
+    if(!date){window.toast&&window.toast('날짜를 선택해 주세요.');return;}
+    const ym=m.month||thisMonth();
+    if(!date.startsWith(ym)){window.toast&&window.toast('수강 월 범위를 벗어난 날짜입니다.');return;}
+    const attend=m.attendance||[];
+    const monthAtt=attend.filter(r=>(r.date||r).startsWith(ym));
+    const selected=window._proAttendSelected||[];
+    // 수업 선택 안 했으면 경고
+    if(!selected.length){window.toast&&window.toast('수업을 하나 이상 선택해 주세요.');return;}
+    if(monthAtt.length+selected.length>20){window.toast&&window.toast('수강 한도(20회)를 초과합니다.');return;}
+    const now=new Date();
+    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    for(const s of selected){
+      const logId=Date.now()+Math.random();
+      await updateDoc(doc(db,'proMembers',id),{attendance:arrayUnion({date,time:timeStr,teacher:s.teacher||'',cat:s.cat||'',logId})});
+    }
+    document.getElementById('pro-attend-popup')?.remove();
+    window.toast&&window.toast(`${m.name}님 수강 기록 ${selected.length}개 추가 완료`);
+  };
+
+  // ── 고정 수업 출석 토글 (선생님 key + 인덱스 0/1) ──
+  window.toggleFixedAttend=async function(id,classKey,idx){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const fixedAttend=JSON.parse(JSON.stringify(m.fixedAttend||{}));
+    const cur=fixedAttend[classKey]||[false,false];
+    cur[idx]=!cur[idx];
+    fixedAttend[classKey]=cur;
+    await updateDoc(doc(db,'proMembers',id),{fixedAttend});
+  };
+
+  // ── 다음 달 연장 등록 ──
+  // ── 전문반 결제 모달 (연장/재결제 공통) ──
+  function openProPayModal({id, targetYm, isRepay}){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const label=monthLabel(targetYm);
+    const existing=document.getElementById('pro-pay-modal');
+    if(existing)existing.remove();
+
+    const overlay=document.createElement('div');
+    overlay.id='pro-pay-modal';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML=`
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;width:320px;max-width:92vw">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">${m.name}님 전문반 ${isRepay?'재결제':'연장 등록'}</div>
+        <div style="font-size:13px;color:#888;margin-bottom:20px">${label}</div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 금액</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          ${[700000,600000,500000].map(v=>`
+            <button onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';document.getElementById('pro-pay-amt').value=${v}"
+              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:#f0f0f0;font-size:14px;font-weight:600;cursor:pointer">
+              ${(v/10000).toFixed(0)}만
+            </button>`).join('')}
+          <input id="pro-pay-amt" type="number" placeholder="직접 입력" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:14px;min-width:90px">
+        </div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">결제 방법</div>
+        <div style="display:flex;gap:8px;margin-bottom:24px" id="pro-pay-method-btns">
+          ${['카드','이체','현금'].map((p,i)=>`
+            <button onclick="document.getElementById('pro-pay-method-btns').querySelectorAll('button').forEach(b=>b.style.background='#f0f0f0');this.style.background='#204828';this.style.color='#fff';this.dataset.selected='1'"
+              style="flex:1;padding:9px 0;border:none;border-radius:8px;background:${i===0?'#204828':'#f0f0f0'};color:${i===0?'#fff':'#333'};font-size:14px;cursor:pointer" data-pay="${p}" ${i===0?'data-selected=1':''}>
+              ${p}
+            </button>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="document.getElementById('pro-pay-modal').remove()"
+            style="flex:1;padding:11px;border:none;border-radius:9px;background:#f0f0f0;font-size:14px;cursor:pointer">취소</button>
+          <button onclick="confirmProPay('${id}','${targetYm}',${isRepay?'true':'false'})"
+            style="flex:1;padding:11px;border:none;border-radius:9px;background:#204828;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+            ${isRepay?'재결제 완료':'연장 등록 완료'}
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    // 기본 70만원 선택
+    overlay.querySelector('button').click();
+  }
+
+  window.confirmProPay=async function(id,targetYm,isRepay){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const amtEl=document.getElementById('pro-pay-amt');
+    const amt=parseInt(amtEl?.value||0);
+    if(!amt||amt<=0){alert('금액을 입력해 주세요.');return;}
+    const payBtn=document.getElementById('pro-pay-method-btns')?.querySelector('[data-selected]');
+    const pay=payBtn?.dataset?.pay||'카드';
+    const label=monthLabel(targetYm);
+
+    // 중복 확인 (연장의 경우)
+    if(!isRepay){
+      const dup=proMembers.find(x=>x.name===m.name&&x.month===targetYm);
+      if(dup){window.toast&&window.toast(`이미 ${label}에 등록되어 있습니다.`);document.getElementById('pro-pay-modal')?.remove();return;}
+    }
+
+    const today=new Date().toISOString().split('T')[0];
+    const now=new Date();
+    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+    // payRecord 저장
+    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher:'',cat:'전문반',ticket:'전문반',amt,pay,note:isRepay?`${label} 재결제`:`${label} 연장등록`};
+    await savePayToFirebase(rec);
+    savePay();
+
+    // proMembers 문서 생성 (연장) or 유지 (재결제)
+    if(!isRepay){
+      await addDoc(collection(db,'proMembers'),{
+        name:m.name,phone:m.phone||'',month:targetYm,memo:m.memo||'',
+        attendance:[],fixedAttend:{},createdAt:serverTimestamp()
+      });
+    }
+
+    document.getElementById('pro-pay-modal')?.remove();
+    if(window.updatePayStats) window.updatePayStats();
+    window.toast&&window.toast(`${m.name}님 ${label} ${isRepay?'재결제':'연장 등록'} 완료! 🎉 (${(amt/10000).toFixed(0)}만원 / ${pay})`);
+  };
+
+  window.openProRenew=function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const curYm=m.month||thisMonth();
+    const[y,mo]=curYm.split('-').map(Number);
+    const nextYm=new Date(y,mo,1).toISOString().slice(0,7);
+    openProPayModal({id,targetYm:nextYm,isRepay:false});
+  };
+
+  window.openProRepay=function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    const curYm=m.month||thisMonth();
+    openProPayModal({id,targetYm:curYm,isRepay:true});
+  };
+
+  window.removeProAttend=async function(id,date,logId){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    if(!confirm(`${date} 수강 기록을 삭제할까요?`))return;
+    const attend=m.attendance||[];
+    // logId가 있으면 정확히 매칭, 없으면 날짜로
+    const entry=attend.find(r=>{
+      if(logId&&r.logId===logId)return true;
+      return (r.date||r)===date&&!r.logId;
+    })||attend.find(r=>(r.date||r)===date);
+    if(entry) await updateDoc(doc(db,'proMembers',id),{attendance:arrayRemove(entry)});
+    window.toast&&window.toast('수강 기록 삭제됨');
+  };
+
+  // ── 일반결제 탭 전문반 연동 ──
+  window.proPayAndDeduct=async function(name,date,teacher,cat,amt,pay){
+    const ym=date.slice(0,7);
+    // 이번 달 전문반 등록 여부 확인
+    let matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
+    // 완전 일치 없으면 부분 일치
+    if(!matched.length){
+      const partial=proMembers.filter(m=>m.month===ym&&(m.name||'').includes(name));
+      if(partial.length===1) matched=partial;
+      else if(partial.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
+    }
+    // 이번 달 미등록 → 전월 데이터로 신규 등록 (재결제)
+    if(!matched.length){
+      // 가장 최근 전문반 기록에서 phone/memo 가져오기
+      const prev=proMembers.filter(m=>(m.name||'')===name).sort((a,b)=>(b.month||'').localeCompare(a.month||''));
+      const phone=prev[0]?.phone||'';
+      const memo=prev[0]?.memo||'';
+      // 신규 proMembers 문서 생성
+      await addDoc(collection(db,'proMembers'),{
+        name,phone,month:ym,memo,
+        attendance:[],fixedAttend:{},
+        createdAt:serverTimestamp()
+      });
+      // 새로 추가된 멤버로 재조회
+      await new Promise(r=>setTimeout(r,600));
+      matched=proMembers.filter(m=>m.month===ym&&(m.name||'')===name);
+      if(!matched.length){
+        // Firestore 반영 전이면 가짜 객체로 진행 (수강 기록은 payRecord에만)
+        window.toast&&window.toast(`${name}님 ${ym.replace('-','년 ')}월 전문반 신규 등록됨`);
+        return {ok:true,isNew:true};
+      }
+    }
+    if(matched.length>1){alert(`"${name}"님이 여러 명입니다. 전문반 탭에서 직접 기록해 주세요.`);return {ok:false};}
+    const result=await doProDeduct(matched[0],date,teacher,cat);
+    return {ok:result,isNew:false};
+  };
+
+  // 기존 호환용
+  window.proDeductForPay=async function(name,date,teacher,cat){
+    const r=await window.proPayAndDeduct(name,date,teacher,cat,0,'전문반');
+    return r?.ok||false;
+  };
+
+  async function doProDeduct(m,date,teacher,cat){
+    const ym=date.slice(0,7);
+    const monthAtt=(m.attendance||[]).filter(r=>(r.date||r).startsWith(ym));
+    if(monthAtt.length>=20){
+      alert(`${m.name}님은 이번 달 수강 한도(20회)에 도달했습니다.`);return false;
+    }
+    const now=new Date();
+    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const logId=Date.now();
+    const entry={date,time:timeStr,teacher:teacher||'',cat:cat||'',logId,fromPay:true};
+    await updateDoc(doc(db,'proMembers',m.id),{attendance:arrayUnion(entry)});
+    return true;
+  }
+
+  // ── 등록/수정 ──
+  window.openProModal=function(){
+    document.getElementById('pro-edit-id').value='';
+    document.getElementById('pro-modal-title').textContent='전문반 등록';
+    document.getElementById('pro-inp-name').value='';
+    document.getElementById('pro-inp-phone').value='010-';
+    document.getElementById('pro-inp-month').value=thisMonth();
+    document.getElementById('pro-inp-memo').value='';
+    document.getElementById('pro-modal').classList.add('show');
+    setTimeout(()=>document.getElementById('pro-inp-name').focus(),50);
+  };
+
+  window.openProEdit=function(id){
+    const m=proMembers.find(x=>x.id===id);if(!m)return;
+    document.getElementById('pro-edit-id').value=id;
+    document.getElementById('pro-modal-title').textContent='전문반 수정';
+    document.getElementById('pro-inp-name').value=m.name||'';
+    document.getElementById('pro-inp-phone').value=m.phone||'';
+    document.getElementById('pro-inp-month').value=m.month||thisMonth();
+    document.getElementById('pro-inp-memo').value=m.memo||'';
+    document.getElementById('pro-modal').classList.add('show');
+  };
+
+  window.closeProModal=function(){document.getElementById('pro-modal').classList.remove('show');};
+
+  window.saveProMember=async function(){
+    const id=document.getElementById('pro-edit-id').value;
+    const name=document.getElementById('pro-inp-name').value.trim();
+    const phone=document.getElementById('pro-inp-phone').value.trim();
+    const month=document.getElementById('pro-inp-month').value;
+    const memo=document.getElementById('pro-inp-memo').value.trim();
+    if(!name||!phone||!month){window.toast&&window.toast('이름, 연락처, 수강 월은 필수입니다.');return;}
+    window.setSyncStatus&&window.setSyncStatus('saving');
+    if(id){
+      await updateDoc(doc(db,'proMembers',id),{name,phone,month,memo});
+      window.toast&&window.toast(`${name}님 정보 수정 완료`);
+    } else {
+      // 중복 확인
+      const dup=proMembers.find(m=>m.name===name&&m.month===month);
+      if(dup&&!confirm(`${name}님은 이미 ${monthLabel(month)}에 등록되어 있습니다. 그래도 추가할까요?`))return;
+      await addDoc(proColRef,{name,phone,month,memo,attendance:[],createdAt:serverTimestamp()});
+      window.toast&&window.toast(`${name}님 ${monthLabel(month)} 전문반 등록 완료! 🎉`);
+    }
+    window.closeProModal();
+  };
+
+  window.removeProMember=async function(id){
+    const m=proMembers.find(x=>x.id===id);
+    if(!confirm(`${m?.name}님(${monthLabel(m?.month||'')})을 삭제할까요?\n수강 이력도 모두 삭제됩니다.`))return;
+    await deleteDoc(doc(db,'proMembers',id));
+    window.toast&&window.toast('삭제되었습니다.');
+  };
+
+  // ── 아카이브 토글 ──
+  window.toggleProArchive=function(){
+    proArchiveOpen=!proArchiveOpen;
+    const arrow=document.getElementById('pro-archive-arrow');
+    const body=document.getElementById('pro-members-archived');
+    if(arrow) arrow.classList.toggle('open',proArchiveOpen);
+    if(body){
+      body.style.display=proArchiveOpen?'grid':'none';
+      if(proArchiveOpen) renderProPage();
+    }
+  };
+
+  // ── 검색 ──
+  window.onProSearch=function(val){
+    proSearchQuery=val.trim();
+    document.getElementById('pro-search-clear').style.display=val?'block':'none';
+    renderProPage();
+  };
+  window.clearProSearch=function(){
+    document.getElementById('pro-search').value='';
+    proSearchQuery='';
+    document.getElementById('pro-search-clear').style.display='none';
+    renderProPage();
+  };
+
+  document.getElementById('pro-modal').addEventListener('click',function(e){if(e.target===this)window.closeProModal();});
+});
 
 </script>
 </body>
