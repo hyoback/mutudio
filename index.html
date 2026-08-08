@@ -1742,6 +1742,7 @@ function renderTodayWidget(){
   }).join('');
   renderTodayWidget();
 }
+window.renderTodayWidget=renderTodayWidget;
 </script>
 
 <!-- ══ 결제 관리 JS ══ -->
@@ -2388,7 +2389,7 @@ function updatePayStats(){
 
   // 티켓 차감 — members history 기준
   const deductItems=[];
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).forEach(h=>{
       if(h.date===today) deductItems.push({name:m.name,teacher:h.teacher||'',time:h.time||''});
     });
@@ -2630,7 +2631,7 @@ function renderDaily(){
   document.getElementById('daily-mini').style.gridTemplateColumns=`repeat(${miniCols},minmax(0,1fr))`;
   // 티켓 차감 내역 → 가상 레코드로 변환
   const ticketRows=[];
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).filter(h=>normDate(h.date)===date).forEach(h=>{
       ticketRows.push({
         id:'hist-'+h.id,
@@ -2790,7 +2791,7 @@ function renderDowChart(month){
     if(r.name) pplMap[dow].add(r.date+'__'+r.name);
   });
   // 티켓 차감 인원도 합산
-  (window.members||[]).forEach(function(m){
+  (Array.isArray(window.members)?window.members:[]).forEach(function(m){
     (m.history||[]).forEach(function(h){
       if(!h.date) return;
       if(month&&!h.date.startsWith(month)) return;
@@ -2958,7 +2959,7 @@ function renderDailyDetail(){
   var monthRecs=payRecords.filter(function(r){return r.date&&r.date.startsWith(ym);});
   // 티켓 차감 포함 인원 (members history)
   var deductByDate={};
-  (window.members||[]).forEach(function(m){
+  (Array.isArray(window.members)?window.members:[]).forEach(function(m){
     (m.history||[]).forEach(function(h){
       if(!h.date||!h.date.startsWith(ym)) return;
       if(!deductByDate[h.date]) deductByDate[h.date]=new Set();
@@ -3510,7 +3511,7 @@ function renderDailyClosing(recs, date){
     teacherMap[r.teacher].payStudents.push({name:r.name,pay:r.pay,amt:r.amt,isPro:r.ticket==='전문반'});
   });
   // 티켓 차감 수강생 (members history 기준)
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).filter(h=>h.date===date&&h.teacher).forEach(h=>{
       ensureTeacher(h.teacher);
       teacherMap[h.teacher].cnt++;
@@ -3820,6 +3821,7 @@ waitDb(db=>{
   function isThisMonth(m){return (m.month||'')===thisMonth();}
   function getMonthAttend(m,ym){return (m.attendance||[]).filter(r=>(r.date||r||'').startsWith(ym));}
   function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`}
+  window.fmtDate=fmtDate;
   function fmtMonth(ym){if(!ym)return'-';const[y,mo]=ym.split('-');return`${y}.${mo}`;}
   const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
