@@ -527,7 +527,7 @@ tr:hover td{background:#fafaf9}
               <div class="amt-chip" onclick="selectTicket(this,8,200000)" id="chip-8t"><span class="ac-name">8 Tickets</span><span class="ac-val">+200,000</span></div>
               <div class="amt-chip" onclick="setAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
               <div class="amt-chip" onclick="selectBasicMonthlyPass(this)" id="chip-basic"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
-              <div class="amt-chip" onclick="selectReservation(this)" id="chip-reserve" style="border-color:#9c6fdb"><span class="ac-name" style="color:#7b4fb5">예약금</span><span class="ac-val" style="color:#7b4fb5">+35,000</span></div>
+              <div class="amt-chip" onclick="selectGuest(this)" id="chip-guest" style="border-color:#5b8a6a"><span class="ac-name" style="color:#2e7d32">게스트</span><span class="ac-val" style="color:#2e7d32">+0</span></div>
               <div class="amt-chip" onclick="selectTicket(this,'pro',700000)" id="chip-pro"><span class="ac-name">PRO (신규)</span><span class="ac-val">+700,000</span></div>
               <div class="amt-chip" onclick="addWater()" style="border-color:#5aaadc"><span class="ac-name" style="color:#2176ae">물 💧</span><span class="ac-val" style="color:#2176ae">+1,000</span></div>
             </div>
@@ -1983,11 +1983,13 @@ function selPay(val,key){
     document.getElementById('pb-'+k).className='chip'+(fPay&&k===key?' on-'+key:'');
   });
 }
-function selectReservation(el){
-  fAmt=35000; fReserve=true; fPassType=0; fWater=false; fWaterOnly=false;
+function selectReservation(el){ selectGuest(el); } // 호환용
+function selectGuest(el){
+  fAmt=0; fReserve=false; fPassType='guest'; fWater=false; fWaterOnly=false;
   updateAmtDisplay();
-  document.getElementById('reserve-reg-wrap').style.display='block';
+  document.getElementById('reserve-reg-wrap').style.display='none';
   document.getElementById('pass-reg-wrap').style.display='none';
+  clearPassReg&&clearPassReg(true);
 }
 function selectTicket(el,passType,price){
   fAmt=price; fWater=false; fWaterOnly=false; fReserve=false;
@@ -2125,6 +2127,19 @@ async function addPayRecord(){
 
   if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
   if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
+
+  // ── 게스트 처리 ──
+  const isGuest = fPassType==='guest';
+  if(isGuest){
+    const now=new Date();
+    const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher||'',cat:fCat||'',ticket:'게스트',amt:0,pay:'게스트',note:note||''};
+    savePayToFirebase(rec); savePay();
+    clearPayForm();
+    window.toast&&window.toast(`${name}님 게스트 등록 완료 ✅`);
+    if(window.updatePayStats) window.updatePayStats();
+    return;
+  }
 
   // ── 전문반 수강 처리 ──
   if(isPro){
@@ -3448,6 +3463,7 @@ function renderDailyClosing(recs, date){
       if(cashStudents.length) summaryTags.push(`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e1f5ee;color:#0f6e56">현금 ${cashStudents.length}</span>`);
       if(ticketStudents.length) summaryTags.push(`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#f0f0f0;color:#555">🎫 티켓 ${ticketStudents.length}</span>`);
       if(proStudents.length) summaryTags.push(`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#f5f0ff;color:#7b4fb5">전문반 ${proStudents.length}</span>`);
+      if(guestStudents.length) summaryTags.push(`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e8f5ee;color:#2e7d32">게스트 ${guestStudents.length}</span>`);
 
       // 수강생 목록 (그룹별)
       function makeGroup(label,students,badgeHtml){
@@ -3465,7 +3481,8 @@ function renderDailyClosing(recs, date){
         + makeGroup('이체',transferStudents,'<span class="closing-student-ticket cst-transfer">이체</span>')
         + makeGroup('현금',cashStudents,'<span class="closing-student-ticket cst-cash">현금</span>')
         + makeGroup('전문반',proStudents,'<span class="closing-student-ticket" style="background:#f5f0ff;color:#7b4fb5">전문반</span>')
-        + makeGroup('🎫 티켓 차감',ticketStudents,'<span class="closing-student-ticket cst-ticket">티켓</span>');
+        + makeGroup('🎫 티켓 차감',ticketStudents,'<span class="closing-student-ticket cst-ticket">티켓</span>')
+        + makeGroup('GUEST',guestStudents,'<span class="closing-student-ticket" style="background:#e8f5ee;color:#2e7d32">게스트</span>');
 
       return`<div>
         <div class="closing-teacher-row" onclick="(function(el){
