@@ -1748,6 +1748,61 @@ window.renderTodayWidget=renderTodayWidget;
 
 <!-- ══ 결제 관리 JS ══ -->
 <script>
+// renderTodayWidget
+function renderTodayWidget(){
+  const widget=document.getElementById('today-widget');
+  const body=document.getElementById('tw-body');
+  const countEl=document.getElementById('tw-count');
+  if(!widget) return;
+
+  const todayStr=new Date().toISOString().split('T')[0];
+  const todayItems=[];
+  members.forEach(m=>{
+    (m.history||[]).forEach(h=>{
+      if(h.date===todayStr){
+        todayItems.push({
+          name:m.name,
+          time:h.time||'',
+          teacher:h.teacher||'',
+          avIdx:m.avIdx||0,
+        });
+      }
+    });
+  });
+  todayItems.sort((a,b)=>{ if(!a.time&&!b.time) return 0; if(!a.time) return 1; if(!b.time) return -1; return b.time.localeCompare(a.time); });
+
+  countEl.textContent=todayItems.length;
+  const avColors=['#e1f5ee','#eeedfe','#faece7','#e6f1fb','#fbeaf0'];
+  const avText=['#0f6e56','#534ab7','#993c1d','#185fa5','#993556'];
+
+  if(!todayItems.length){
+    body.innerHTML='<div class="tw-empty">오늘 수강 내역 없음</div>';
+  } else {
+    body.innerHTML=todayItems.map((item,i)=>{
+      const av=i%5;
+      const initials=item.name.slice(0,2);
+      return `<div class="tw-item">
+        <div class="tw-avatar" style="background:${avColors[av]};color:${avText[av]}">${initials}</div>
+        <div class="tw-info">
+          <div class="tw-name">${item.name}</div>
+          <div class="tw-detail">${item.teacher||''}${item.teacher&&item.time?' · ':''}${item.time||''}</div>
+        </div>
+        <div class="tw-time">${item.time||''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // 표시 여부는 탭 상태에 따라 — 데이터는 항상 위에서 미리 렌더링
+  const passPage=document.getElementById('page-pass');
+  const isPassActive=passPage&&passPage.style.display!=='none';
+  if(isPassActive){
+    widget.classList.remove('hidden-widget');
+  } else {
+    widget.classList.add('hidden-widget');
+  }
+}
+window.renderTodayWidget=renderTodayWidget;
+
 const PAY_KEY='mutudio_pay_v2';
 const TEACHER_KEY='mutudio_teachers_v2';
 
