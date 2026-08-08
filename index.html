@@ -1219,7 +1219,6 @@ onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));window.m
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 window.daysLeft=daysLeft;
-function fmtDate(d){const dt=new Date(d);return`${dt.getMonth()+1}/${dt.getDate()}`;}
 function initials(n){return n.slice(0,2);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 window.toast=toast;
@@ -2293,6 +2292,7 @@ function clearPayForm(){
 }
 
 function updatePayStats(){
+  if(!Array.isArray(window.members)||!Array.isArray(window.payRecords)) return;
   const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
   const today=new Date().toISOString().split('T')[0];
   const todayRecs=payRecords.filter(r=>r.date===today);
@@ -2309,7 +2309,7 @@ function updatePayStats(){
 
   // 티켓 차감 — members history 기준
   const deductItems=[];
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).forEach(h=>{
       if(h.date===today) deductItems.push({name:m.name,teacher:h.teacher||'',time:h.time||''});
     });
@@ -2379,10 +2379,12 @@ function buildPayTable(data){
     <tbody>${data.map(r=>{
       const isTicket=r._isTicket;
       const isPro=r._isPro;
-      const rowBg=isTicket?'background:#f0f8f2':isPro?'background:#fdf5ff':'';
+      const isRefunded=r.refunded===true;
+      const rowBg=isTicket?'background:#f0f8f2':isPro?'background:#fdf5ff':isRefunded?'background:#fff5f5':'';
+      const refundBadge=isRefunded?`<span style="font-size:10px;padding:1px 6px;border-radius:5px;background:#ffeaea;color:#e24b4a;font-weight:600;margin-left:4px">환불</span>`:'';
       const amtCell=isTicket
         ?'<span style="font-size:11px;color:#888">차감</span>'
-        :(r.amt>0?`<span style="font-weight:500">${fmtW(r.amt)}</span>`:'<span style="color:#aaa">—</span>');
+        :(r.amt>0?`<span style="font-weight:500;${isRefunded?'text-decoration:line-through;color:#ccc':''}">${fmtW(r.amt)}</span>${refundBadge}`:'<span style="color:#aaa">—</span>');
       const payCell=isTicket
         ?'<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#e1f5ee;color:#0f6e56;font-weight:600">티켓</span>'
         :isPro
@@ -2543,7 +2545,7 @@ function renderDaily(){
   document.getElementById('daily-mini').style.gridTemplateColumns=`repeat(${proCnt?6:5},minmax(0,1fr))`;
   // 티켓 차감 내역 → 가상 레코드로 변환
   const ticketRows=[];
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).filter(h=>normDate(h.date)===date).forEach(h=>{
       ticketRows.push({
         id:'hist-'+h.id,
@@ -2703,7 +2705,7 @@ function renderDowChart(month){
     if(r.name) pplMap[dow].add(r.date+'__'+r.name);
   });
   // 티켓 차감 인원도 합산
-  (window.members||[]).forEach(function(m){
+  (Array.isArray(window.members)?window.members:[]).forEach(function(m){
     (m.history||[]).forEach(function(h){
       if(!h.date) return;
       if(month&&!h.date.startsWith(month)) return;
@@ -2871,7 +2873,7 @@ function renderDailyDetail(){
   var monthRecs=payRecords.filter(function(r){return r.date&&r.date.startsWith(ym);});
   // 티켓 차감 포함 인원 (members history)
   var deductByDate={};
-  (window.members||[]).forEach(function(m){
+  (Array.isArray(window.members)?window.members:[]).forEach(function(m){
     (m.history||[]).forEach(function(h){
       if(!h.date||!h.date.startsWith(ym)) return;
       if(!deductByDate[h.date]) deductByDate[h.date]=new Set();
@@ -3418,7 +3420,7 @@ function renderDailyClosing(recs, date){
     teacherMap[r.teacher].payStudents.push({name:r.name,pay:r.pay,amt:r.amt,isPro:r.ticket==='전문반'});
   });
   // 티켓 차감 수강생 (members history 기준)
-  (window.members||[]).forEach(m=>{
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
     (m.history||[]).filter(h=>h.date===date&&h.teacher).forEach(h=>{
       ensureTeacher(h.teacher);
       teacherMap[h.teacher].cnt++;
@@ -3707,7 +3709,8 @@ waitDb(db=>{
   function monthEnd(ym){const[y,m]=ym.split('-');return new Date(y,m,0).toISOString().split('T')[0];}
   function isThisMonth(m){return (m.month||'')===thisMonth();}
   function getMonthAttend(m,ym){return (m.attendance||[]).filter(r=>(r.date||r||'').startsWith(ym));}
-  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`;}
+  function fmtDate(d){if(!d)return'-';const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`}
+  window.fmtDate=fmtDate;
   function fmtMonth(ym){if(!ym)return'-';const[y,mo]=ym.split('-');return`${y}.${mo}`;}
   const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
@@ -4331,6 +4334,7 @@ window.renderRefundsTab = async function() {
     refundRecords = snap.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   } catch(e){ console.error('환불 로드 오류:',e); refundRecords=[]; }
+
   const totalCnt=refundRecords.length;
   const totalAmt=refundRecords.reduce((s,r)=>s+(r.refundAmt||0),0);
   const thisMonth=new Date().toISOString().slice(0,7);
@@ -4338,27 +4342,31 @@ window.renderRefundsTab = async function() {
   const setCnt=document.getElementById('rf-total-cnt'); if(setCnt) setCnt.textContent=totalCnt+'건';
   const setAmt=document.getElementById('rf-total-amt'); if(setAmt) setAmt.textContent=totalAmt.toLocaleString()+'원';
   const setMo=document.getElementById('rf-month-amt'); if(setMo) setMo.textContent=monthAmt.toLocaleString()+'원';
+
   const wrap=document.getElementById('rf-list-wrap');
   if(!wrap) return;
-  if(!refundRecords.length){ wrap.innerHTML='<div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">환불 내역이 없습니다</div>'; return; }
-  const REASON_COLOR={'부상':'#4a90d9','개인사정':'#f5a623','수업변경':'#1d9e75','기타':'#888'};
-  wrap.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="border-bottom:2px solid #f0f0ee">
-      <th style="padding:8px 6px;text-align:left;color:#888">환불일</th>
-      <th style="padding:8px 6px;text-align:left;color:#888">이름</th>
-      <th style="padding:8px 6px;text-align:left;color:#888">원결제</th>
-      <th style="padding:8px 6px;text-align:right;color:#e24b4a">환불금액</th>
-      <th style="padding:8px 6px;text-align:center;color:#888">방법</th>
-      <th style="padding:8px 6px;text-align:center;color:#888">사유</th>
-    </tr></thead>
-    <tbody>${refundRecords.map(r=>`<tr style="border-bottom:1px solid #f5f5f3">
-      <td style="padding:10px 6px;color:#aaa">${r.date||''}</td>
-      <td style="padding:10px 6px;font-weight:600">${r.name||''}</td>
-      <td style="padding:10px 6px;color:#888">${r.originalDate||''} · ${r.originalTicket||''} · ${(r.originalAmt||0).toLocaleString()}원</td>
-      <td style="padding:10px 6px;text-align:right;font-weight:700;color:#e24b4a">${(r.refundAmt||0).toLocaleString()}원</td>
-      <td style="padding:10px 6px;text-align:center"><span style="font-size:10px;padding:2px 7px;border-radius:6px;background:#ffeaea;color:#e24b4a;font-weight:600">${r.refundMethod||''}</span></td>
-      <td style="padding:10px 6px;text-align:center"><span style="font-size:10px;padding:2px 7px;border-radius:6px;background:#f0f0ee;color:${REASON_COLOR[r.reason]||'#888'};font-weight:600">${r.reason||''}</span></td>
-    </tr>`).join('')}</tbody></table>`;
+  if(!refundRecords.length){
+    wrap.innerHTML='<div style="text-align:center;padding:40px 0;color:#bbb;font-size:13px">환불 내역이 없습니다</div>';
+    return;
+  }
+
+  const METHOD_COLOR={'카드취소':'#854f0b','이체':'#1a56db','현금':'#555'};
+  const METHOD_BG={'카드취소':'#faeeda','이체':'#e8f0fe','현금':'#f0f0ee'};
+  const REASON_COLOR={'부상':'#1a56db','개인사정':'#854f0b','수업변경':'#0f6e56','기타':'#888'};
+  const REASON_BG={'부상':'#e8f0fe','개인사정':'#faeeda','수업변경':'#e1f5ee','기타':'#f0f0ee'};
+
+  wrap.innerHTML=refundRecords.map(r=>`
+    <div style="background:#fff;border:1px solid #f0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:15px;font-weight:700">${r.name||''}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${METHOD_BG[r.refundMethod]||'#f0f0ee'};color:${METHOD_COLOR[r.refundMethod]||'#555'};font-weight:600">${r.refundMethod||''}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${REASON_BG[r.reason]||'#f0f0ee'};color:${REASON_COLOR[r.reason]||'#888'};font-weight:600">${r.reason||''}</span>
+        </div>
+        <div style="font-size:11px;color:#aaa">${r.date||''} · 원결제 ${r.originalDate||''} ${r.originalTicket||''} ${(r.originalAmt||0).toLocaleString()}원</div>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:#e24b4a;white-space:nowrap">-${(r.refundAmt||0).toLocaleString()}원</div>
+    </div>`).join('');
 };
 
 window.exportRefundCSV = function() {
