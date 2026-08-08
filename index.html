@@ -2125,8 +2125,8 @@ async function addPayRecord(){
     return;
   }
 
-  if(!isPro&&fAmt<=0){alert('결제 금액을 입력해주세요');return;}
-  if(!isPro&&!fPay){alert('결제 방법을 선택해주세요');return;}
+  if(!isPro&&fAmt<=0&&fPassType!=='guest'){alert('결제 금액을 입력해주세요');return;}
+  if(!isPro&&!fPay&&fPassType!=='guest'){alert('결제 방법을 선택해주세요');return;}
 
   // ── 게스트 처리 ──
   const isGuest = fPassType==='guest';
@@ -3454,6 +3454,7 @@ function renderDailyClosing(recs, date){
       const transferStudents=v.payStudents.filter(s=>s.pay==='이체'&&!s.isPro);
       const cashStudents=v.payStudents.filter(s=>s.pay==='현금'&&!s.isPro);
       const proStudents=v.payStudents.filter(s=>s.isPro);
+      const guestStudents=v.payStudents.filter(s=>s.pay==='게스트'||s.ticket==='게스트');
       const ticketStudents=v.ticketStudents;
 
       // 요약 태그 (헤더에 표시)
