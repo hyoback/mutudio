@@ -3432,7 +3432,7 @@ function renderDailyClosing(recs, date){
     teacherMap[r.teacher].cnt++;
     teacherMap[r.teacher].amt+=r.amt;
     if(r.cat) teacherMap[r.teacher].cats.add(r.cat);
-    teacherMap[r.teacher].payStudents.push({name:r.name,pay:r.pay,amt:r.amt,isPro:r.ticket==='전문반'});
+    teacherMap[r.teacher].payStudents.push({name:r.name,pay:r.pay,amt:r.amt,isPro:r.ticket==='전문반',refunded:r.refunded===true});
   });
   // 티켓 차감 수강생 (members history 기준)
   (Array.isArray(window.members)?window.members:[]).forEach(m=>{
@@ -3450,11 +3450,11 @@ function renderDailyClosing(recs, date){
       const catLabel=[...v.cats].map(c=>CAT_LABEL_MAP[c]||c).join(', ');
 
       // 결제 수단별 그룹
-      const cardStudents=v.payStudents.filter(s=>s.pay==='카드'&&!s.isPro);
-      const transferStudents=v.payStudents.filter(s=>s.pay==='이체'&&!s.isPro);
-      const cashStudents=v.payStudents.filter(s=>s.pay==='현금'&&!s.isPro);
-      const proStudents=v.payStudents.filter(s=>s.isPro);
-      const guestStudents=v.payStudents.filter(s=>s.pay==='게스트'||s.ticket==='게스트');
+      const cardStudents=v.payStudents.filter(s=>s.pay==='카드'&&!s.isPro&&!s.refunded);
+      const transferStudents=v.payStudents.filter(s=>s.pay==='이체'&&!s.isPro&&!s.refunded);
+      const cashStudents=v.payStudents.filter(s=>s.pay==='현금'&&!s.isPro&&!s.refunded);
+      const proStudents=v.payStudents.filter(s=>s.isPro&&!s.refunded);
+      const guestStudents=v.payStudents.filter(s=>(s.pay==='게스트'||s.ticket==='게스트')&&!s.refunded);
       const ticketStudents=v.ticketStudents;
 
       // 요약 태그 (헤더에 표시)
@@ -4384,7 +4384,33 @@ window.renderRefundsTab = async function() {
         <div style="font-size:11px;color:#aaa">${r.date||''} · 원결제 ${r.originalDate||''} ${r.originalTicket||''} ${(r.originalAmt||0).toLocaleString()}원</div>
       </div>
       <div style="font-size:18px;font-weight:700;color:#e24b4a;white-space:nowrap">-${(r.refundAmt||0).toLocaleString()}원</div>
+      <button onclick="deleteRefundRecord('${r.id}','${r.originalId||''}')" style="padding:4px 10px;border:1px solid #e0e0da;border-radius:6px;background:none;font-size:11px;color:#ccc;cursor:pointer;font-family:inherit;flex-shrink:0" onmouseover="this.style.color='#e24b4a';this.style.borderColor='#e24b4a'" onmouseout="this.style.color='#ccc';this.style.borderColor='#e0e0da'">삭제</button>
     </div>`).join('');
+};
+
+window.deleteRefundRecord = async function(refundId, originalId) {
+  if(!confirm('이 환불 기록을 삭제할까요?\n원결제의 환불 표시도 함께 제거됩니다.')) return;
+  try {
+    const db = firebase.firestore();
+    // refunds 컬렉션에서 삭제
+    await db.collection('refunds').doc(refundId).delete();
+    // 원결제의 refunded 표시 제거
+    if(originalId) {
+      try {
+        await db.collection('payRecords').doc(originalId).update({
+          refunded: firebase.firestore.FieldValue.delete(),
+          refundAmt: firebase.firestore.FieldValue.delete(),
+          refundDate: firebase.firestore.FieldValue.delete()
+        });
+      } catch(e) { console.warn('원결제 업데이트 실패(무시):', e); }
+    }
+    if(typeof window.toast==='function') window.toast('환불 기록 삭제 완료');
+    // 목록 새로고침
+    if(typeof window.renderRefundsTab==='function') window.renderRefundsTab();
+  } catch(e) {
+    console.error('환불 삭제 오류:', e);
+    alert('삭제 중 오류: ' + e.message);
+  }
 };
 
 window.exportRefundCSV = function() {
