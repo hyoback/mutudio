@@ -1257,10 +1257,11 @@ function switchMainTab(id){
   document.getElementById('page-pass').style.display=(id==='pass')?'block':'none';
   document.getElementById('page-pro').style.display=(id==='pro')?'block':'none';
   document.getElementById('page-transfer').style.display=(id==='transfer')?'block':'none';
-  if(id==='pay') updatePayStats();
-  if(id==='pro') renderProMembers();
-  if(id==='transfer') renderTransferPage();
-  renderTodayWidget();
+  if(id==='pay' && typeof updatePayStats==='function') updatePayStats();
+  if(id==='pro' && typeof renderProMembers==='function') renderProMembers();
+  if(id==='transfer' && typeof renderTransferPage==='function') renderTransferPage();
+  if(typeof renderTodayWidget==='function') renderTodayWidget();
+  else if(typeof window.renderTodayWidget==='function') window.renderTodayWidget();
   if(typeof updateTopBtnVisibility==='function') updateTopBtnVisibility();
 }
 </script>
@@ -2373,6 +2374,7 @@ function clearPayForm(){
 }
 
 function updatePayStats(){
+  if(!Array.isArray(window.members)||!Array.isArray(window.payRecords)) return;
   const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
   const today=new Date().toISOString().split('T')[0];
   const todayRecs=payRecords.filter(r=>r.date===today);
