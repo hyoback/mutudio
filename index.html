@@ -2547,6 +2547,7 @@ function delPayRecord(id){
 }
 
 function renderDaily(){
+  window.renderDaily=renderDaily; // 전역 노출
   const date=document.getElementById('fd-date').value;
   if(!date) return;
   const cat=document.getElementById('fd-cat').value;
@@ -3795,10 +3796,12 @@ waitDb(db=>{
   onSnapshot(query(refundsColRef,orderBy('createdAt','desc')),snap=>{
     window.refundRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
     // 일별/월별 보기 재렌더 (환불 차감 반영)
-    if(typeof curPayTab!=='undefined'){
-      if(curPayTab==='daily'&&typeof renderDaily==='function') renderDaily();
-      if(curPayTab==='monthly'&&typeof renderMonthly==='function') renderMonthly();
-    }
+    try{
+      if(typeof window.curPayTab!=='undefined'){
+        if(window.curPayTab==='daily'&&typeof window.renderDaily==='function') window.renderDaily();
+        if(window.curPayTab==='monthly'&&typeof window.renderMonthly==='function') window.renderMonthly();
+      }
+    }catch(e){}
   },err=>console.error('환불 로드 오류:',err));
 
   // ── 메인 렌더 ──
