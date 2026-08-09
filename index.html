@@ -1216,18 +1216,13 @@ const AV=['av0','av1','av2','av3','av4'];window.AV=AV;
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-async function loadMembers(){
-  try{
-    const snap=await getDocs(q);
-    members=snap.docs.map(d=>({id:d.id,...d.data()}));
-    window.members=members;
-    setSyncStatus('ok');setLastSync();render();
-    if(typeof renderTodayWidget==='function')renderTodayWidget();
-    updatePayStats();
-  }catch(err){setSyncStatus('err');console.error(err);}
-}
-loadMembers();
-window.reloadMembers=loadMembers;
+onSnapshot(q,(snap)=>{
+  members=snap.docs.map(d=>({id:d.id,...d.data()}));
+  window.members=members;
+  setSyncStatus('ok');setLastSync();render();
+  if(typeof renderTodayWidget==='function')renderTodayWidget();
+  updatePayStats();
+},(err)=>{setSyncStatus('err');console.error(err);});
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 window.daysLeft=daysLeft;
@@ -1770,19 +1765,17 @@ function loadPay(){
   if(saved){try{payTeachers=JSON.parse(saved);}catch(e){payTeachers=[];}}
   else{payTeachers=[...new Set(ALL_TEACHERS_DEFAULT)];localStorage.setItem(TEACHER_KEY,JSON.stringify(payTeachers));}
   // 결제기록은 Firebase에서 실시간 수신
-  async function loadPayRecords(){
-  try{
-    const snap=await payColRef.orderBy('createdAt','desc').get();
+  payColRef.orderBy('createdAt','desc').onSnapshot(function(snap){
     payRecords=snap.docs.map(function(d){return Object.assign({id:d.id,firebaseId:d.id},d.data());});
     updatePayStats();
     populateStatMonths();
     if(curPayTab==='daily') renderDaily();
     if(curPayTab==='monthly') renderMonthly();
     if(curPayTab==='stats') renderTeacherStats();
-  }catch(err){console.error('payRecords 로드 오류:',err);}
-}
-loadPayRecords();
-window.reloadPayRecords=loadPayRecords;
+  },function(err){
+    try{payRecords=JSON.parse(localStorage.getItem(PAY_KEY)||'[]');}catch(e){payRecords=[];}
+    updatePayStats();
+  });
 }
 function savePay(){try{localStorage.setItem(PAY_KEY,JSON.stringify(payRecords));}catch(e){}}
 window.savePay=savePay;
@@ -1842,14 +1835,14 @@ async function init(){
 
 function loadTempClassesFromFirebase(today){
   // onSnapshot으로 실시간 감지 (새로고침해도 유지)
-  dbCompat.collection('tempClasses').where('date','==',today).get().then(snap=>{
+  dbCompat.collection('tempClasses').where('date','==',today).onSnapshot(snap=>{
     tempClasses=[];
     snap.forEach(doc=>{
       const d=doc.data();
       tempClasses.push({t:d.t,cat:d.cat,time:d.time,date:d.date});
     });
     renderTempChips();
-  }).catch(err=>console.error('임시수업 오류:',err));
+  },err=>console.error('임시수업 오류:',err));
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', init);
@@ -3740,7 +3733,7 @@ function exportCSV(){
 
 <!-- ══ 전문반 관리 JS ══ -->
 <script type="module">
-import{getFirestore,collection,onSnapshot,getDocs,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Firestore 준비 대기
 function waitDb(cb){
@@ -3767,23 +3760,18 @@ waitDb(db=>{
   const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
   // ── 실시간 동기화 ──
-  async function loadProMembers(){
-    try{
-      const snap=await getDocs(query(proColRef,orderBy('createdAt')));
-      proMembers=snap.docs.map(d=>{
-        const data={id:d.id,...d.data()};
-        if(!data.month){
-          const ref=data.startDate||data.expiry||'';
-          if(ref) data.month=ref.slice(0,7);
-        }
-        return data;
-      });
-      window.proMembers=proMembers;
-      renderProPage();
-    }catch(err){console.error('전문반 오류:',err);}
-  }
-  loadProMembers();
-  window.reloadProMembers=loadProMembers;
+  onSnapshot(query(proColRef,orderBy('createdAt')),snap=>{
+    proMembers=snap.docs.map(d=>{
+      const data={id:d.id,...d.data()};
+      if(!data.month){
+        const ref=data.startDate||data.expiry||'';
+        if(ref) data.month=ref.slice(0,7);
+      }
+      return data;
+    });
+    window.proMembers=proMembers;
+    renderProPage();
+  },err=>console.error('전문반 오류:',err));
 
   // ── 메인 렌더 ──
   function renderProPage(){
