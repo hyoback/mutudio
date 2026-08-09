@@ -433,6 +433,7 @@ tr:hover td{background:#fafaf9}
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:12px;color:#aaa" id="last-sync"></span>
     <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v26.8.2</span>
+    <button onclick="reloadAll()" title="데이터 새로고침" style="padding:7px 12px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:16px;color:#555">🔄</button>
     <button onclick="openStudentSearch()" style="padding:7px 14px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;color:#555;display:flex;align-items:center;gap:6px"><span style="font-size:17px">🔍</span> 수강생 검색</button>
   </div>
 </div>
@@ -1215,7 +1216,18 @@ const AV=['av0','av1','av2','av3','av4'];window.AV=AV;
 function setSyncStatus(s){const el=document.getElementById('sync-status');if(s==='ok'){el.className='sync-status sync-ok';el.textContent='● 연결됨';}else if(s==='saving'){el.className='sync-status sync-saving';el.textContent='● 저장 중...';}else{el.className='sync-status sync-err';el.textContent='● 오프라인';}}
 function setLastSync(){const now=new Date();document.getElementById('last-sync').textContent=`마지막 동기화 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}
 const q=query(colRef,orderBy("createdAt"));
-onSnapshot(q,(snap)=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));window.members=members;setSyncStatus('ok');setLastSync();render();if(typeof renderTodayWidget==='function')renderTodayWidget();updatePayStats();},(err)=>{setSyncStatus('err');console.error(err);});
+async function loadMembers(){
+  try{
+    const snap=await getDocs(q);
+    members=snap.docs.map(d=>({id:d.id,...d.data()}));
+    window.members=members;
+    setSyncStatus('ok');setLastSync();render();
+    if(typeof renderTodayWidget==='function')renderTodayWidget();
+    updatePayStats();
+  }catch(err){setSyncStatus('err');console.error(err);}
+}
+loadMembers();
+window.reloadMembers=loadMembers;
 function getExpiry(p){const d=new Date(p);d.setDate(d.getDate()+28);return d;}
 function daysLeft(p){const now=new Date();now.setHours(0,0,0,0);const exp=getExpiry(p);exp.setHours(0,0,0,0);return Math.ceil((exp-now)/86400000);}
 window.daysLeft=daysLeft;
@@ -1758,19 +1770,19 @@ function loadPay(){
   if(saved){try{payTeachers=JSON.parse(saved);}catch(e){payTeachers=[];}}
   else{payTeachers=[...new Set(ALL_TEACHERS_DEFAULT)];localStorage.setItem(TEACHER_KEY,JSON.stringify(payTeachers));}
   // 결제기록은 Firebase에서 실시간 수신
-  payColRef.orderBy('createdAt','desc').onSnapshot(function(snap){
+  async function loadPayRecords(){
+  try{
+    const snap=await payColRef.orderBy('createdAt','desc').get();
     payRecords=snap.docs.map(function(d){return Object.assign({id:d.id,firebaseId:d.id},d.data());});
     updatePayStats();
     populateStatMonths();
-    // 현재 탭이 일별/월별이면 재렌더
     if(curPayTab==='daily') renderDaily();
     if(curPayTab==='monthly') renderMonthly();
     if(curPayTab==='stats') renderTeacherStats();
-  },function(err){
-    console.warn('Firebase 오류, localStorage 폴백:', err);
-    try{payRecords=JSON.parse(localStorage.getItem(PAY_KEY)||'[]');}catch(e){payRecords=[];}
-    updatePayStats();
-  });
+  }catch(err){console.error('payRecords 로드 오류:',err);}
+}
+loadPayRecords();
+window.reloadPayRecords=loadPayRecords;
 }
 function savePay(){try{localStorage.setItem(PAY_KEY,JSON.stringify(payRecords));}catch(e){}}
 window.savePay=savePay;
@@ -1779,12 +1791,28 @@ async function savePayToFirebase(record){
   try{
     const {id,...data}=record;
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-    await payColRef.add(data);
+    const docRef=await payColRef.add(data);
+    // 로컬 배열 즉시 업데이트 (Firestore 재조회 없이)
+    const localRec=Object.assign({id:docRef.id,firebaseId:docRef.id},record);
+    payRecords.unshift(localRec);
+    window.payRecords=payRecords;
+    updatePayStats();
+    populateStatMonths();
+    if(curPayTab==='daily') renderDaily();
+    if(curPayTab==='monthly') renderMonthly();
   }catch(e){console.error('Firebase 저장 오류:',e);}
 }
 window.savePayToFirebase=savePayToFirebase;
 async function deletePayFromFirebase(id){
-  try{await payColRef.doc(id).delete();}catch(e){console.error('Firebase 삭제 오류:',e);}
+  try{
+    await payColRef.doc(id).delete();
+    // 로컬 배열에서도 즉시 제거
+    payRecords=payRecords.filter(r=>String(r.firebaseId||r.id)!==String(id));
+    window.payRecords=payRecords;
+    updatePayStats();
+    if(curPayTab==='daily') renderDaily();
+    if(curPayTab==='monthly') renderMonthly();
+  }catch(e){console.error('Firebase 삭제 오류:',e);}
 }
 function saveTeachersData(){try{localStorage.setItem(TEACHER_KEY,JSON.stringify(payTeachers));}catch(e){}}
 function fmtN(n){return Math.round(n).toLocaleString('ko-KR');}
@@ -1814,14 +1842,14 @@ async function init(){
 
 function loadTempClassesFromFirebase(today){
   // onSnapshot으로 실시간 감지 (새로고침해도 유지)
-  dbCompat.collection('tempClasses').where('date','==',today).onSnapshot(snap=>{
+  dbCompat.collection('tempClasses').where('date','==',today).get().then(snap=>{
     tempClasses=[];
     snap.forEach(doc=>{
       const d=doc.data();
       tempClasses.push({t:d.t,cat:d.cat,time:d.time,date:d.date});
     });
     renderTempChips();
-  },err=>console.error('임시수업 오류:',err));
+  }).catch(err=>console.error('임시수업 오류:',err));
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', init);
@@ -3381,7 +3409,13 @@ async function saveEditPay(){
     const rec=payRecords.find(r=>r.id===id||r.id===String(id));
     const fbId=rec?.firebaseId||rec?.id||String(id);
     await dbCompat.collection('payRecords').doc(fbId).update(updated);
-    // onSnapshot이 자동 감지해서 리렌더링
+    // 로컬 배열 즉시 업데이트
+    const idx=payRecords.findIndex(r=>r.id===id||r.id===String(id));
+    if(idx!==-1) payRecords[idx]=Object.assign({},payRecords[idx],updated);
+    window.payRecords=payRecords;
+    updatePayStats();
+    if(curPayTab==='daily') renderDaily();
+    if(curPayTab==='monthly') renderMonthly();
   }catch(e){
     console.error('수정 오류:',e);
     (window.toast||function(){})('수정 중 오류가 발생했습니다.');
@@ -3706,7 +3740,7 @@ function exportCSV(){
 
 <!-- ══ 전문반 관리 JS ══ -->
 <script type="module">
-import{getFirestore,collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,onSnapshot,getDocs,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,query,orderBy,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Firestore 준비 대기
 function waitDb(cb){
@@ -3733,19 +3767,23 @@ waitDb(db=>{
   const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
   // ── 실시간 동기화 ──
-  onSnapshot(query(proColRef,orderBy('createdAt')),snap=>{
-    proMembers=snap.docs.map(d=>{
-      const data={id:d.id,...d.data()};
-      // 구버전 데이터 호환: month 필드 없으면 startDate 또는 expiry에서 추출
-      if(!data.month){
-        const ref=data.startDate||data.expiry||'';
-        if(ref) data.month=ref.slice(0,7);
-      }
-      return data;
-    });
-    window.proMembers=proMembers;
-    renderProPage();
-  },err=>console.error('전문반 오류:',err));
+  async function loadProMembers(){
+    try{
+      const snap=await getDocs(query(proColRef,orderBy('createdAt')));
+      proMembers=snap.docs.map(d=>{
+        const data={id:d.id,...d.data()};
+        if(!data.month){
+          const ref=data.startDate||data.expiry||'';
+          if(ref) data.month=ref.slice(0,7);
+        }
+        return data;
+      });
+      window.proMembers=proMembers;
+      renderProPage();
+    }catch(err){console.error('전문반 오류:',err);}
+  }
+  loadProMembers();
+  window.reloadProMembers=loadProMembers;
 
   // ── 메인 렌더 ──
   function renderProPage(){
@@ -4182,6 +4220,20 @@ waitDb(db=>{
 // ═══════════════════════════════════════════════
 
 // ── 베이직 차액 결제 ──
+// ── 전체 데이터 새로고침 ──
+window.reloadAll = async function() {
+  if(typeof window.reloadMembers==='function') await window.reloadMembers();
+  if(typeof window.reloadPayRecords==='function') await window.reloadPayRecords();
+  if(typeof window.reloadProMembers==='function') await window.reloadProMembers();
+  if(typeof window.toast==='function') window.toast('데이터 새로고침 완료 ✅');
+};
+
+// savePay: 기존 로컬 저장 (localStorage) - payRecords는 이미 위에서 업데이트됨
+// members 변경 후 자동 reload를 위한 훅
+window.afterMemberChange = async function(){
+  if(typeof window.reloadMembers==='function') await window.reloadMembers();
+};
+
 window.applyBasicDiff = function(weeks) {
   const amt = weeks === 4 ? 115000 : 75000;
   window.fAmt = amt;
