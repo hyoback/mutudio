@@ -3792,16 +3792,15 @@ waitDb(db=>{
   },err=>console.error('전문반 오류:',err));
 
   // 환불 내역 실시간 동기화
-  const refundsColRef=db.collection('refunds');
+  const refundsColRef=collection(db,'refunds');
   onSnapshot(query(refundsColRef,orderBy('createdAt','desc')),snap=>{
     window.refundRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
-    // 일별/월별 보기 재렌더 (환불 차감 반영)
+    // 일별/월별 보기 재렌더 (환불 차감 반영) - try/catch로 안전하게
     try{
-      if(typeof window.curPayTab!=='undefined'){
-        if(window.curPayTab==='daily'&&typeof window.renderDaily==='function') window.renderDaily();
-        if(window.curPayTab==='monthly'&&typeof window.renderMonthly==='function') window.renderMonthly();
-      }
-    }catch(e){}
+      const ct=window.curPayTab;
+      if(ct==='daily'&&typeof window.renderDaily==='function') window.renderDaily();
+      else if(ct==='monthly'&&typeof window.renderMonthly==='function') window.renderMonthly();
+    }catch(e){ console.warn('환불 재렌더 오류(무시):', e); }
   },err=>console.error('환불 로드 오류:',err));
 
   // ── 메인 렌더 ──
@@ -4402,10 +4401,9 @@ window.confirmRefund = async function() {
     originalTicket:r.ticket||r.cat||'', refundAmt:amt, refundMethod:refundMethod, reason:reason
   };
   try {
-    const db = firebase.firestore();
-    await db.collection('refunds').add({...refundRec, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await dbCompat.collection('refunds').add({...refundRec, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     const docId = r.firebaseId||String(r.id);
-    await db.collection('payRecords').doc(docId).update({refunded:true, refundAmt:amt, refundDate:today});
+    await dbCompat.collection('payRecords').doc(docId).update({refunded:true, refundAmt:amt, refundDate:today});
     const idx=(window.payRecords||[]).findIndex(x=>String(x.firebaseId||x.id)===String(refundTargetId));
     if(idx!==-1){ window.payRecords[idx].refunded=true; window.payRecords[idx].refundAmt=amt; }
     window.closeRefundModal();
@@ -4417,9 +4415,8 @@ window.confirmRefund = async function() {
 // ── 환불 내역 탭 ──
 let refundRecords = [];
 window.renderRefundsTab = async function() {
-  const db = firebase.firestore();
   try {
-    const snap = await db.collection('refunds').get();
+    const snap = await dbCompat.collection('refunds').get();
     refundRecords = snap.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   } catch(e){ console.error('환불 로드 오류:',e); refundRecords=[]; }
@@ -4464,11 +4461,11 @@ window.deleteRefundRecord = async function(refundId, originalId) {
   try {
     const db = firebase.firestore();
     // refunds 컬렉션에서 삭제
-    await db.collection('refunds').doc(refundId).delete();
+    await dbCompat.collection('refunds').doc(refundId).delete();
     // 원결제의 refunded 표시 제거
     if(originalId) {
       try {
-        await db.collection('payRecords').doc(originalId).update({
+        await dbCompat.collection('payRecords').doc(originalId).update({
           refunded: firebase.firestore.FieldValue.delete(),
           refundAmt: firebase.firestore.FieldValue.delete(),
           refundDate: firebase.firestore.FieldValue.delete()
