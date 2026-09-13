@@ -967,6 +967,13 @@ tr:hover td{background:#fafaf9}
     <div class="deduct-class-title" id="dc-title">수업을 선택해 주세요</div>
     <div class="deduct-class-sub" id="dc-sub"></div>
     <div class="deduct-class-list" id="dc-list"></div>
+    <div id="dc-manual-wrap" style="border-top:1px solid #eee;margin-top:8px;padding-top:12px">
+      <div style="font-size:11px;color:#aaa;margin-bottom:6px">목록에 없는 강사(오늘만 대강 등)는 직접 입력하세요</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="dc-manual-teacher" placeholder="강사명 직접 입력" style="flex:1;padding:8px 10px;border:1px solid #e0e0da;border-radius:8px;font-size:13px;font-family:inherit;outline:none">
+        <button onclick="confirmDeductManual()" style="padding:8px 14px;border:1px solid #204828;background:#204828;color:#fff;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap">차감</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3473,10 +3480,13 @@ function openDeductClassModal(m){
   const dow=new Date().getDay();
   const TT=window.TIMETABLE||{};
   const classes=TT[dow]||[];
+  // 오늘 결제입력 탭에서 "+ 수업 추가"로 넣은 임시 수업도 같이 보여줌
+  const today=new Date().toISOString().split('T')[0];
+  const todaysTemp=(typeof tempClasses!=='undefined'?tempClasses:[]).filter(c=>c.date===today);
   const list=document.getElementById('dc-list');
   list.innerHTML='';
 
-  let allClasses=[...classes];
+  let allClasses=[...classes,...todaysTemp];
   if(isBasic && m.basicTeacher){
     allClasses=allClasses.filter(c=>
       c.cat==='베이직' && c.t && c.t.toUpperCase().includes(m.basicTeacher.toUpperCase())
@@ -3487,7 +3497,7 @@ function openDeductClassModal(m){
   }
 
   if(!allClasses.length){
-    list.innerHTML='<div style="font-size:12px;color:#aaa;text-align:center;padding:10px">오늘 등록된 수업이 없습니다</div>';
+    list.innerHTML='<div style="font-size:12px;color:#aaa;text-align:center;padding:10px">오늘 등록된 수업이 없습니다. 아래에서 직접 입력해 주세요.</div>';
   } else {
     const fixed=allClasses.filter(c=>c.cat!=='팝업').sort((a,b)=>a.time>b.time?1:-1);
     const popup=allClasses.filter(c=>c.cat==='팝업').sort((a,b)=>a.time>b.time?1:-1);
@@ -3505,7 +3515,18 @@ function openDeductClassModal(m){
       list.appendChild(btn);
     });
   }
+  const manualInput=document.getElementById('dc-manual-teacher');
+  if(manualInput) manualInput.value='';
   document.getElementById('deduct-class-modal').classList.add('show');
+}
+
+async function confirmDeductManual(){
+  const teacher=document.getElementById('dc-manual-teacher').value.trim();
+  if(!teacher){ if(window.toast) window.toast('강사명을 입력해 주세요.'); return; }
+  document.getElementById('deduct-class-modal').classList.remove('show');
+  if(!deductTargetId) return;
+  await window.doDeduct(deductTargetId,teacher,'');
+  deductTargetId=null;
 }
 
 async function confirmDeductClass(teacher,cat){
