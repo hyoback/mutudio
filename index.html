@@ -500,6 +500,8 @@ tr:hover td{background:#fafaf9}
               <div class="amt-chip" onclick="setAmt(30000)"><span class="ac-name">1 Ticket</span><span class="ac-val">+30,000</span></div>
               <div class="amt-chip" onclick="selectTicket(this,4,110000)" id="chip-4t"><span class="ac-name">4 Tickets (신규)</span><span class="ac-val">+110,000</span></div>
               <div class="amt-chip" onclick="selectTicket(this,8,200000)" id="chip-8t"><span class="ac-name">8 Tickets (신규)</span><span class="ac-val">+200,000</span></div>
+              <div class="amt-chip" onclick="selectSelectTicket(this,4,149000)" id="chip-select4" style="border-color:#6a1b9a;background:#f8f0fc"><span class="ac-name" style="color:#6a1b9a">SELECT 04 (신규)</span><span class="ac-val" style="color:#6a1b9a">+149,000</span></div>
+              <div class="amt-chip" onclick="selectSelectTicket(this,8,239000)" id="chip-select8" style="border-color:#6a1b9a;background:#f8f0fc"><span class="ac-name" style="color:#6a1b9a">SELECT 08 (신규)</span><span class="ac-val" style="color:#6a1b9a">+239,000</span></div>
               <div class="amt-chip" onclick="setAmt(40000)"><span class="ac-name">Basic 1회</span><span class="ac-val">+40,000</span></div>
               <div class="amt-chip" onclick="selectBasicMonthlyPass(this)" id="chip-basic"><span class="ac-name">Basic 월등록</span><span class="ac-val" id="basic-monthly-val">▼ 선택</span></div>
               <div class="amt-chip" onclick="selectGuest(this)" id="chip-guest" style="border-color:var(--sage)"><span class="ac-name" style="color:var(--sage)">게스트</span><span class="ac-val" style="color:var(--sage)">+0</span></div>
@@ -540,6 +542,9 @@ tr:hover td{background:#fafaf9}
                 </div>
                 <div id="pass-pro-extra" style="display:none;flex:1;min-width:140px">
                   <input type="month" id="f-pass-pro-month" class="pay-input" style="width:100%" title="전문반 수강 월">
+                </div>
+                <div id="pass-select-extra" style="display:none;flex:1;min-width:140px">
+                  <input type="text" id="f-pass-locker" class="pay-input" style="width:100%" placeholder="락커 번호 (선택, 메모용)">
                 </div>
               </div>
               <div style="font-size:11px;color:#6aab84;margin-top:6px" class="pass-reg-hint">결제 등록 시 다회권도 자동 생성됩니다</div>
@@ -748,6 +753,7 @@ tr:hover td{background:#fafaf9}
     <button class="filt-btn active" data-filter="all" onclick="window.setFilter('all')" id="filt-all">전체 수강생</button>
     <button class="filt-btn" data-filter="4" onclick="window.setFilter('4')" id="filt-4">4 Tickets</button>
     <button class="filt-btn" data-filter="8" onclick="window.setFilter('8')" id="filt-8">8 Tickets</button>
+    <button class="filt-btn" data-filter="select" onclick="window.setFilter('select')" id="filt-select">✨ SELECT</button>
     <button class="filt-btn" data-filter="basic" onclick="window.setFilter('basic')" id="filt-basic">Basic Monthly</button>
     <button class="filt-btn" data-filter="reserved" onclick="window.setFilter('reserved')" id="filt-reserved">예약금 💜</button>
     <button class="filt-btn" data-filter="expired" onclick="window.setFilter('expired')" id="filt-exp">만료·소진</button>
@@ -1451,6 +1457,10 @@ window.renewPass=(id)=>{
       <button class="pass-btn" onclick="confirmRenew('${id}',8)">8 Tickets<br><span style="font-size:11px;color:#aaa;font-weight:400">₩200,000</span></button>
       <button class="pass-btn" onclick="showRenewBasic('${id}')">Basic Monthly</button>
     </div>
+    <div class="pass-select" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="pass-btn" style="border-color:#6a1b9a;color:#6a1b9a" onclick="confirmRenew('${id}',4,true)">✨ SELECT 04<br><span style="font-size:11px;color:#aaa;font-weight:400">₩149,000</span></button>
+      <button class="pass-btn" style="border-color:#6a1b9a;color:#6a1b9a" onclick="confirmRenew('${id}',8,true)">✨ SELECT 08<br><span style="font-size:11px;color:#aaa;font-weight:400">₩239,000</span></button>
+    </div>
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">결제 방법</div>
       <div style="display:flex;gap:6px" id="renew-pay-btns">
@@ -1505,7 +1515,7 @@ window.payBalance=async(id)=>{
   await updateDoc(doc(db,'members',id),{status:deleteField(),memo:''});
   toast(`${m.name}님 잔금 완납! 수강 시작 가능합니다 🎉`);
 };
-window.confirmRenew=async(id,passType)=>{
+window.confirmRenew=async(id,passType,isSelect)=>{
   const payMethod=window._renewPayMethod||'카드';
   document.getElementById('renew-modal')?.remove();
   const m=members.find(x=>x.id===id);if(!m)return;
@@ -1513,12 +1523,15 @@ window.confirmRenew=async(id,passType)=>{
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   const RENEW_PRICE={4:110000,8:200000};
-  const amt=RENEW_PRICE[passType]||0;
-  const ticketLabel=passType+'티켓 결제';
+  const SELECT_PRICE={4:149000,8:239000};
+  const amt=isSelect?SELECT_PRICE[passType]:(RENEW_PRICE[passType]||0);
+  const ticketLabel=isSelect?('SELECT '+passType+' 결제'):(passType+'티켓 결제');
   setSyncStatus('saving');
-  await updateDoc(doc(db,'members',id),{remaining:passType,passType:passType,payDate:today,lastPayMethod:payMethod});
+  const updateData={remaining:passType,passType:passType,payDate:today,lastPayMethod:payMethod};
+  if(isSelect) updateData.isSelect=true;
+  await updateDoc(doc(db,'members',id),updateData);
   if(window.savePayToFirebase){
-    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher:m.basicTeacher||'',cat:'다회권',ticket:ticketLabel,amt,pay:payMethod,note:'다회권 재결제'};
+    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher:m.basicTeacher||'',cat:'다회권',ticket:ticketLabel,amt,pay:payMethod,note:isSelect?'SELECT 재결제':'다회권 재결제',passPurchase:true};
     payRecords.push(rec);window.savePayToFirebase(rec);
     if(window.savePay)window.savePay();if(window.updatePayStats)window.updatePayStats();
   }
@@ -1547,7 +1560,7 @@ window.confirmRenewBasic=async(id)=>{
   setSyncStatus('saving');
   await updateDoc(doc(db,'members',id),{passType:'basic',basicTeacher:teacher,basicWeeks:weeks,remaining:weeks,payDate:today,lastPayMethod:payMethod});
   if(window.savePayToFirebase){
-    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher,cat:'다회권',ticket:ticketLabel,amt,pay:payMethod,note:'베이직 재결제'};
+    const rec={id:Date.now(),date:today,time:timeStr,name:m.name,teacher,cat:'다회권',ticket:ticketLabel,amt,pay:payMethod,note:'베이직 재결제',passPurchase:true};
     payRecords.push(rec);window.savePayToFirebase(rec);
     if(window.savePay)window.savePay();if(window.updatePayStats)window.updatePayStats();
   }
@@ -1562,6 +1575,7 @@ function render(){
   const cnt4=members.filter(m=>m.passType===4&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cnt8=members.filter(m=>m.passType===8&&daysLeft(m.payDate)>0&&m.remaining>0).length;
   const cntBasic=members.filter(m=>m.passType==='basic'&&m.status!=='reserved'&&daysLeft(m.payDate)>0&&m.remaining>0).length;
+  const cntSelect=members.filter(m=>m.isSelect===true).length;
   const cntReserved=members.filter(m=>m.status==='reserved').length;
   const cntExp=members.filter(m=>m.status!=='reserved'&&(daysLeft(m.payDate)<=0||m.remaining<=0)).length;
   const cntAll=members.length;
@@ -1569,6 +1583,7 @@ function render(){
   const f4=document.getElementById('filt-4');if(f4)f4.textContent='4 Tickets ('+cnt4+')';
   const f8=document.getElementById('filt-8');if(f8)f8.textContent='8 Tickets ('+cnt8+')';
   const fbasic=document.getElementById('filt-basic');if(fbasic)fbasic.textContent='Basic Monthly ('+cntBasic+')';
+  const fselect=document.getElementById('filt-select');if(fselect)fselect.textContent='✨ SELECT ('+cntSelect+')';
   const freserved=document.getElementById('filt-reserved');if(freserved)freserved.textContent='예약금 💜 ('+cntReserved+')';
   const fe=document.getElementById('filt-exp');if(fe)fe.textContent='만료·소진 ('+cntExp+')';
   let filtered=members.filter(m=>{
@@ -1578,6 +1593,8 @@ function render(){
       return m.status==='reserved';
     } else if(filterMode==='basic'){
       return m.passType==='basic'&&m.status!=='reserved';
+    } else if(filterMode==='select'){
+      return m.isSelect===true;
     } else if(filterMode!=='all'){
       if(m.passType!==Number(filterMode)) return false;
     }
@@ -1666,7 +1683,7 @@ function renderTodayWidget(){
       <div class="card-top">
         <div class="avatar ${av}">${initials(m.name)}</div>
         <div class="member-info">
-          <div class="member-name">${hlMatch(m.name,searchQuery)}<span class="pass-type-badge ${passBadgeCls}">${passLabel}</span></div>
+          <div class="member-name">${hlMatch(m.name,searchQuery)}<span class="pass-type-badge ${passBadgeCls}">${passLabel}</span>${m.isSelect?`<span class="pass-type-badge" style="background:#f3e5f5;color:#6a1b9a">✨ SELECT${m.lockerNo?' · 락커 '+m.lockerNo:''}</span>`:''}</div>
           <div class="member-phone">${hlMatch(m.phone,searchQuery)}</div>
           ${m.nameEn?`<div style="font-size:11px;color:#bbb;margin-top:1px">${m.nameEn}</div>`:''}
         </div>
@@ -1761,7 +1778,7 @@ const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDU
 
 let payRecords=[],payTeachers=[];
 Object.defineProperty(window,'payRecords',{get:()=>payRecords,set:(v)=>{payRecords=v;}});
-let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0;
+let fName='',fDate='',fTeacher='',fCat='',fTicket='',fPay='',fAmt=0,fWater=false,fWaterOnly=false,fDeduct=false,fPassType=0,fIsSelect=false;
 let showAllTeachers=false,selMonthPay=new Date().toISOString().slice(0,7),curPayTab='input';
 
 function loadPay(){
@@ -2020,9 +2037,16 @@ function selectGuest(el){
   clearPassReg&&clearPassReg(false);
 }
 function selectTicket(el,passType,price){
-  fAmt=price; fWater=false; fWaterOnly=false;
+  fAmt=price; fWater=false; fWaterOnly=false; fIsSelect=false;
   clearPassReg(true);
   fPassType=passType;
+  updateAmtDisplay();
+  showPassRegWrap(passType);
+}
+function selectSelectTicket(el,passType,price){
+  fAmt=price; fWater=false; fWaterOnly=false;
+  clearPassReg(true);
+  fPassType=passType; fIsSelect=true;
   updateAmtDisplay();
   showPassRegWrap(passType);
 }
@@ -2037,12 +2061,23 @@ function showPassRegWrap(passType){
   const basicExtra=document.getElementById('pass-basic-extra');
   const weekExtra=document.getElementById('pass-week-extra');
   const proExtra=document.getElementById('pass-pro-extra');
+  const selectExtra=document.getElementById('pass-select-extra');
   const label=document.getElementById('pass-reg-label');
   const hint=document.querySelector('#pass-reg-wrap .pass-reg-hint');
   wrap.style.display='block';
   basicExtra.style.display=passType==='basic'?'block':'none';
   weekExtra.style.display=passType==='basic'?'block':'none';
   proExtra.style.display=passType==='pro'?'block':'none';
+  selectExtra.style.display=fIsSelect?'block':'none';
+  if(fIsSelect&&(passType===4||passType===8)){
+    wrap.style.background='#f8f0fc';
+    wrap.style.borderColor='#d4a8e8';
+    label.style.color='#6a1b9a';
+    label.textContent='✨ mu:tudio SELECT '+passType+'회 등록';
+    hint.style.color='#9c4fc9';
+    hint.textContent='수업 '+passType+'회 + 오픈연습실 + 개인 락커가 함께 제공돼요.';
+    return;
+  }
   if(passType==='pro'){
     wrap.style.background='#f5f0ff';
     wrap.style.borderColor='#c4a8e8';
@@ -2083,12 +2118,14 @@ function updatePassRegHint(){
   }
 }
 function clearPassReg(resetType){
-  if(resetType){fPassType=0;}
+  if(resetType){fPassType=0; fIsSelect=false;}
   document.getElementById('pass-reg-wrap').style.display='none';
   document.getElementById('f-pass-phone').value='';
   document.getElementById('f-pass-basic-teacher').value='';
   document.getElementById('f-pass-basic-weeks').value='4';
   document.getElementById('f-pass-pro-month').value='';
+  const lockerEl=document.getElementById('f-pass-locker');
+  if(lockerEl) lockerEl.value='';
 }
 function setAmt(n){
   fAmt=n; fWater=false; fWaterOnly=false; fPassType=0;
@@ -2195,7 +2232,8 @@ async function addPayRecord(){
 
   const now=new Date();
   const timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:fTicket,amt:fAmt,pay:fPay,note};
+  const recTicket=fIsSelect?('SELECT '+fPassType):fTicket;
+  const rec={id:Date.now(),date,time:timeStr,name,teacher:fTeacher,cat:fCat,ticket:recTicket,amt:fAmt,pay:fPay,note,passPurchase:(fPassType===4||fPassType===8||fPassType==='basic')};
   savePayToFirebase(rec);
   savePay();
 
@@ -2255,6 +2293,11 @@ async function addPayRecord(){
         passData.basicWeeks=parseInt(document.getElementById('f-pass-basic-weeks').value||3);
         if(!passData.basicTeacher){alert('베이직 강사를 선택해 주세요.');return;}
       }
+      if(fIsSelect){
+        passData.isSelect=true;
+        const lockerEl=document.getElementById('f-pass-locker');
+        passData.lockerNo=lockerEl?lockerEl.value.trim():'';
+      }
       (window.setSyncStatus||function(){})('saving');
       try{
         await dbCompat.collection('members').add(passData);
@@ -2297,7 +2340,7 @@ function clearPayForm(){
   document.getElementById('f-name').value='';
   document.getElementById('f-note').value='';
   document.getElementById('f-amt-custom').value='';
-  fTeacher='';fCat='';fTicket='';fPay='카드';fAmt=0;fWater=false;fWaterOnly=false;fDeduct=false;fPassType=0;showAllTeachers=false;
+  fTeacher='';fCat='';fTicket='';fPay='카드';fAmt=0;fWater=false;fWaterOnly=false;fDeduct=false;fPassType=0;fIsSelect=false;showAllTeachers=false;
   document.getElementById('toggle-teacher-btn').textContent='전체 보기';
   const pc=document.getElementById('pro-chip');if(pc){pc.dataset.on='0';pc.classList.remove('on');}
   const dc=document.getElementById('deduct-chip');if(dc){dc.dataset.on='0';dc.style.background='';dc.style.borderColor='#204828';dc.style.color='#204828';dc.style.fontWeight='';}
@@ -2308,6 +2351,18 @@ function clearPayForm(){
   document.getElementById('pb-cash').className='chip';
   updateAmtDisplay();renderClassChips();
 }
+
+// 다회권(4/8회권·베이직·SELECT) 구매/재결제 기록인지 판별 — 새 기록은 passPurchase 표시가 있고, 예전 기록은 금액·분류로 추정
+function isPassPurchase(r){
+  if(!r||r.name==='물'||r.water) return false;
+  if(r.passPurchase===true) return true;
+  if(r.passPurchase===false) return false;
+  if(r.pay==='게스트'||r.pay==='전문반'||r.ticket==='게스트'||r.ticket==='전문반') return false;
+  if(/재결제/.test(r.note||'')) return true;
+  if(/^(4회권|8회권|베이직)/.test(r.cat||'')) return true;
+  return [110000,149000,150000,200000,239000].includes(r.amt||0);
+}
+window.isPassPurchase=isPassPurchase;
 
 function updatePayStats(){
   if(!Array.isArray(window.members)||!Array.isArray(window.payRecords)) return;
@@ -2662,6 +2717,7 @@ function renderTeacherStats(){
   const map={};
   recs.forEach(r=>{
     if(!r.teacher) return;
+    if(isPassPurchase(r)) return; // 다회권 결제는 강사 매출에서 제외(차감으로 인원만 반영)
     if(!map[r.teacher]) map[r.teacher]={total:0,amt:0,tickets:{},students:new Set(),dates:{}};
     map[r.teacher].total++;
     map[r.teacher].amt+=(r.amt||0)-(r.refunded?(r.refundAmt||0):0);
@@ -2671,7 +2727,21 @@ function renderTeacherStats(){
     map[r.teacher].dates[r.date].count++;
     map[r.teacher].dates[r.date].names.push(r.name);
   });
-  const sorted=Object.entries(map).sort((a,b)=>b[1].amt-a[1].amt);
+  (Array.isArray(window.members)?window.members:[]).forEach(m=>{
+    (m.history||[]).forEach(h=>{
+      if(!h.teacher||!h.date) return;
+      if(month&&!h.date.startsWith(month)) return;
+      if(!map[h.teacher]) map[h.teacher]={total:0,amt:0,tickets:{},students:new Set(),dates:{}};
+      const t=map[h.teacher];
+      t.total++;
+      t.tickets['🎫 티켓 차감']=(t.tickets['🎫 티켓 차감']||0)+1;
+      t.students.add(m.name);
+      if(!t.dates[h.date]) t.dates[h.date]={count:0,names:[]};
+      t.dates[h.date].count++;
+      t.dates[h.date].names.push(m.name);
+    });
+  });
+  const sorted=Object.entries(map).sort((a,b)=>b[1].amt-a[1].amt||b[1].total-a[1].total);
   const wrap=document.getElementById('teacher-stats-wrap');
   if(!sorted.length){wrap.innerHTML='<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px">데이터가 없습니다</div>';return;}
   const tCol={'1 Ticket':'#faeeda','4 Tickets':'#e8f5e9','8 Tickets':'#eeedfe','월등록':'#fce4ec'};
@@ -2740,7 +2810,7 @@ function renderDowChart(month){
     var dow=new Date(r.date+'T00:00:00').getDay();
     sumMap[dow]+=r.amt;
     daySet[dow].add(r.date);
-    if(r.name) pplMap[dow].add(r.date+'__'+r.name);
+    if(r.name&&!isPassPurchase(r)) pplMap[dow].add(r.date+'__'+r.name);
   });
   (Array.isArray(window.members)?window.members:[]).forEach(function(m){
     (m.history||[]).forEach(function(h){
@@ -2920,7 +2990,7 @@ function renderDailyDetail(){
     var proRecs=recs.filter(function(r){return r.ticket==='전문반';});
     var amt=payRecs.reduce(function(s,r){return s+r.amt;},0)+waterRecs.reduce(function(s,r){return s+r.amt;},0);
     var pplSet=new Set();
-    payRecs.forEach(function(r){if(r.name)pplSet.add(r.name);});
+    payRecs.forEach(function(r){if(r.name&&!isPassPurchase(r))pplSet.add(r.name);});
     proRecs.forEach(function(r){if(r.name)pplSet.add(r.name+'_pro');});
     if(deductByDate[d]) deductByDate[d].forEach(function(n){pplSet.add(n+'_tkt');});
     var ppl=pplSet.size;
@@ -3407,7 +3477,7 @@ function renderDailyClosing(recs, date){
   const deductCnt=(window.members||[]).reduce((s,m)=>s+((m.history||[]).filter(h=>h.date===date).length),0);
 
   const paidRecs=payRecs.filter(r=>r.pay!=='다회권'&&r.amt>0);
-  const uniqueStudents=new Set(paidRecs.map(r=>r.name)).size;
+  const passPurchases=payRecs.filter(r=>isPassPurchase(r)&&r.amt>0&&!r.refunded);
 
   const teacherMap={};
   function ensureTeacher(t){
@@ -3417,7 +3487,7 @@ function renderDailyClosing(recs, date){
       ticketStudents:[]
     };
   }
-  payRecs.filter(r=>r.teacher&&r.pay!=='다회권').forEach(r=>{
+  payRecs.filter(r=>r.teacher&&r.pay!=='다회권'&&!isPassPurchase(r)).forEach(r=>{
     ensureTeacher(r.teacher);
     teacherMap[r.teacher].cnt++;
     teacherMap[r.teacher].amt+=r.amt;
@@ -3432,6 +3502,14 @@ function renderDailyClosing(recs, date){
       teacherMap[h.teacher].ticketStudents.push({name:m.name});
     });
   });
+  // 강사별 '총 N명'은 같은 사람이 결제+차감으로 두 번 잡히지 않게 이름 기준으로 계산
+  Object.values(teacherMap).forEach(v=>{
+    v.cnt=new Set([...v.payStudents.map(s=>s.name),...v.ticketStudents.map(s=>s.name)]).size;
+  });
+  // 총 수강생 = 오늘 수업에 실제로 참여한 사람(이름 기준 1회)
+  const uniqueStudents=new Set(Object.values(teacherMap).flatMap(v=>[...v.payStudents.filter(s=>!s.refunded).map(s=>s.name),...v.ticketStudents.map(s=>s.name)])).size;
+  const passBuyHtml=passPurchases.length?`<div style="margin:10px 0 2px;font-size:11px;font-weight:700;color:#6a1b9a;letter-spacing:.04em;display:flex;justify-content:space-between"><span>💳 다회권 결제 (${passPurchases.length}건)</span><span>${fmtW(passPurchases.reduce((s,r)=>s+r.amt,0))}</span></div>`
+    +passPurchases.map(r=>`<div class="closing-student-item"><span style="flex:1;font-weight:500">${r.name}</span><span style="font-size:11px;color:#aaa">${r.ticket||r.cat||''}</span><span style="font-size:11px;color:#aaa">${fmtW(r.amt)}</span><span class="closing-student-ticket ${r.pay==='카드'?'cst-card':r.pay==='이체'?'cst-transfer':'cst-cash'}">${r.pay}</span></div>`).join(''):'';
   const dow=date?new Date(date+'T00:00:00').getDay():null;
   const daySchedule=dow!==null?((window.TIMETABLE||{})[dow]||[]):[];
   const teacherTimeMap={};
@@ -3528,6 +3606,8 @@ function renderDailyClosing(recs, date){
     <div class="closing-title">📋 ${date} 마감 요약</div>
 
     ${teacherRows||'<div class="closing-row"><span class="closing-label" style="color:#aaa">결제 내역 없음</span></div>'}
+
+    ${passBuyHtml}
 
     <div style="border-top:1px solid #f0f0ee;margin:8px 0"></div>
 
