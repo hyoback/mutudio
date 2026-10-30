@@ -408,7 +408,7 @@ tr:hover td{background:#fafaf9}
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:12px;color:#aaa" id="last-sync"></span>
-    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v26.8.4</span>
+    <span style="font-size:11px;color:#ccc;letter-spacing:0.3px;white-space:nowrap">v26.9.1</span>
     <button onclick="reloadAll()" title="데이터 새로고침" style="padding:7px 12px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:16px;color:#555">🔄</button>
     <button onclick="openStudentSearch()" style="padding:7px 14px;background:none;border:1px solid #e0e0da;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;color:#555;display:flex;align-items:center;gap:6px"><span style="font-size:17px">🔍</span> 수강생 검색</button>
   </div>
@@ -524,7 +524,7 @@ tr:hover td{background:#fafaf9}
                 <div id="pass-basic-extra" style="display:none;flex:1;min-width:140px">
                   <select id="f-pass-basic-teacher" class="pay-input" style="width:100%">
                     <option value="">강사 선택</option>
-                    <option>PADO</option><option>CIÉ</option><option>HYOS</option>
+                    <option>PADO</option><option>CIÉ</option><option>HYOS</option><option>NEOH</option>
                   </select>
                 </div>
                 <div id="pass-week-extra" style="display:none;flex:1;min-width:120px">
@@ -834,6 +834,7 @@ tr:hover td{background:#fafaf9}
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','PADO')">PADO</button>
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','CIÉ')">CIÉ</button>
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','HYOS')">HYOS</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'inp','NEOH')">NEOH</button>
           </div>
         </div>
         <div>
@@ -869,6 +870,7 @@ tr:hover td{background:#fafaf9}
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','PADO')">PADO</button>
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','CIÉ')">CIÉ</button>
             <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','HYOS')">HYOS</button>
+            <button class="basic-teacher-btn" onclick="selectBasicTeacher(this,'edit','NEOH')">NEOH</button>
           </div>
         </div>
         <div>
@@ -1100,6 +1102,7 @@ tr:hover td{background:#fafaf9}
         <button onclick="confirmTransferBasic('PADO')" class="tm-cat-btn">PADO</button>
         <button onclick="confirmTransferBasic('CIÉ')" class="tm-cat-btn">CIÉ</button>
         <button onclick="confirmTransferBasic('HYOS')" class="tm-cat-btn">HYOS</button>
+        <button onclick="confirmTransferBasic('NEOH')" class="tm-cat-btn">NEOH</button>
       </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -1476,6 +1479,7 @@ window.renewPass=(id)=>{
           <button class="basic-teacher-btn${m.basicTeacher==='PADO'?' active':''}" onclick="selectBasicTeacher(this,'renew','PADO')">PADO</button>
           <button class="basic-teacher-btn${m.basicTeacher==='CIÉ'?' active':''}" onclick="selectBasicTeacher(this,'renew','CIÉ')">CIÉ</button>
           <button class="basic-teacher-btn${m.basicTeacher==='HYOS'?' active':''}" onclick="selectBasicTeacher(this,'renew','HYOS')">HYOS</button>
+          <button class="basic-teacher-btn${m.basicTeacher==='NEOH'?' active':''}" onclick="selectBasicTeacher(this,'renew','NEOH')">NEOH</button>
         </div>
       </div>
       <div>
@@ -1740,33 +1744,33 @@ const TEACHER_KEY='mutudio_teachers_v2';
 window.TIMETABLE = {
   0:[
     {t:'LEEKO',      cat:'비기너', time:'4:50'},
-    {t:'JUJU',       cat:'정규',   time:'5:50'},
     {t:'HYOS',       cat:'베이직', time:'7:20'},
   ],
   1:[
     {t:'CIÉ',        cat:'베이직', time:'6:20'},
     {t:'MANDUCK',    cat:'정규',   time:'6:30'},
     {t:'PADO',       cat:'베이직', time:'7:50'},
+    {t:'NOVA',       cat:'정규',   time:'9:00'},
   ],
   2:[
     {t:'BETCHA',     cat:'정규',   time:'6:30'},
     {t:'GOOSEUL',    cat:'정규',   time:'7:40'},
-    {t:'TEDDY',      cat:'정규',   time:'7:50'},
+    {t:'NEOH',       cat:'베이직', time:'7:50'},
   ],
   3:[
+    {t:'LETDO',      cat:'정규',   time:'7:40'},
     {t:'EVE',        cat:'정규',   time:'7:50'},
   ],
   4:[
-    {t:'SOPHIEHEN',  cat:'정규',   time:'6:30'},
     {t:'LEEKO',      cat:'정규',   time:'7:40'},
-    {t:'CHOCOL',     cat:'정규',   time:'9:00'},
   ],
   5:[
+    {t:'JUJU',       cat:'정규',   time:'6:30'},
     {t:'REALEE',     cat:'정규',   time:'7:40'},
     {t:'JJ',         cat:'정규',   time:'9:00'},
   ],
   6:[
-    {t:'LETDO',      cat:'정규',   time:'5:50'},
+    {t:'JIA',        cat:'정규',   time:'5:50'},
   ],
 };
 
@@ -1774,7 +1778,8 @@ const CAT_COLOR={정규:'dark',팝업:'popup',비기너:'beginner',베이직:'or
 const CAT_DOT={정규:'#1a1a1a',팝업:'#2e7d32',비기너:'#c8b741',베이직:'#f5a623','K-POP':'#4a90d9',워크샵:'#9c27b0'};
 const CAT_LABEL={'정규':'REGULAR','팝업':'POP-UP','비기너':'BEGINNER','베이직':'BASIC','K-POP':'K-POP','워크샵':'WORKSHOP'};
 
-const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDUCK","LINY","WANNA","CHAERIN","HINARI","BUCKEY","TEDDY","HYNN","EVE","SSOJU","NATTY","YENI CHO","SOPHIEHEN","MINNY PARK","CHOCOL","ASME","REALEE","JUNGWOO","JJ","PITU","KUNA","SSONG","MINA MYOUNG","KAAN","MAAIN","HION","AUSTIN","BELIEVE","GUMA","ROSY","LETDO","FUNKY Y","HALO","HYOS X COI","HAIAN","PIKI","NOHWON","SIR","DAIM","JIOH","JIA","SUHWA","HANNAH","TEDDY X KAAN","AZHA X ARMSEOK","JACOB","LEEKO X EVE","HYOSOO","SHINHAE","WALE KIM","HWI","KIM SEOHYUN","AZHA","HOSANG","REALEE X GWANWOO","BENY","YEOJIN","DUNT","HOWWL","PLOII","NOAH","KYOHONG","GOOSEUL X JACOB","MINHAK","EUNHAK","DIA HYUN","NOVA","CIÉ","BETCHA","PADO"];
+const BASIC_ONLY=['PADO','NEOH'];
+const ALL_TEACHERS_DEFAULT=["SYA","LEEKO","RENYO","JUJU","GOOSEUL","HYOS","MANDUCK","LINY","WANNA","CHAERIN","HINARI","BUCKEY","TEDDY","HYNN","EVE","SSOJU","NATTY","YENI CHO","SOPHIEHEN","MINNY PARK","CHOCOL","ASME","REALEE","JUNGWOO","JJ","PITU","KUNA","SSONG","MINA MYOUNG","KAAN","MAAIN","HION","AUSTIN","BELIEVE","GUMA","ROSY","LETDO","FUNKY Y","HALO","HYOS X COI","HAIAN","PIKI","NOHWON","SIR","DAIM","JIOH","JIA","SUHWA","HANNAH","TEDDY X KAAN","AZHA X ARMSEOK","JACOB","LEEKO X EVE","HYOSOO","SHINHAE","WALE KIM","HWI","KIM SEOHYUN","AZHA","HOSANG","REALEE X GWANWOO","BENY","YEOJIN","DUNT","HOWWL","PLOII","NOAH","KYOHONG","GOOSEUL X JACOB","MINHAK","EUNHAK","DIA HYUN","NOVA","CIÉ","BETCHA","PADO","NEOH"];
 
 let payRecords=[],payTeachers=[];
 Object.defineProperty(window,'payRecords',{get:()=>payRecords,set:(v)=>{payRecords=v;}});
@@ -3302,7 +3307,7 @@ function qdPick(memberId){
   catBtns.innerHTML='';
 
   let cats=[];
-  if(isBasic && teacher==='PADO'){
+  if(isBasic && BASIC_ONLY.includes(teacher)){
     cats=[{val:'베이직',label:'BASIC'}];
     catInput.value='베이직';
   } else if(isBasic){
@@ -3315,7 +3320,7 @@ function qdPick(memberId){
     const b=document.createElement('button');
     b.style.cssText='padding:7px 14px;border:1.5px solid #e0e0da;border-radius:8px;background:#fff;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;color:#666;transition:.12s';
     b.textContent=c.label;
-    if(i===0&&(isBasic&&teacher==='PADO')){
+    if(i===0&&(isBasic&&BASIC_ONLY.includes(teacher))){
       b.style.borderColor='#204828';b.style.background='#eaf4e5';b.style.color='#204828';b.style.cursor='default';
     }
     b.addEventListener('click',function(){
@@ -3326,7 +3331,7 @@ function qdPick(memberId){
     catBtns.appendChild(b);
   });
 
-  if(isBasic && teacher!=='PADO' && cats.length>0){
+  if(isBasic && !BASIC_ONLY.includes(teacher) && cats.length>0){
   }
 
   const remain=m.remaining??0;
@@ -3394,7 +3399,7 @@ async function qdConfirm(){
   const teacher=document.getElementById('qd-teacher').value.trim();
   const cat=document.getElementById('qd-cat').value;
   const isBasic=m.passType==='basic';
-  if(isBasic && teacher!=='PADO' && !cat){
+  if(isBasic && !BASIC_ONLY.includes(teacher) && !cat){
     (window.toast||function(){})('수업 분류를 선택해 주세요 (REGULAR / POP-UP)');
     btn.disabled=false;btn.textContent='차감하기';return;
   }
